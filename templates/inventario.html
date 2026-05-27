@@ -1,0 +1,850 @@
+{% extends "base.html" %}
+
+{% block title %}Inventario - Cepillados{% endblock %}
+
+{% block page_title %}Gestión de Inventario{% endblock %}
+{% block breadcrumb %}Inventario{% endblock %}
+
+{% block extra_css %}
+<style>
+    .inventory-card {
+        background: var(--bg-card);
+        border-radius: 12px;
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--border-color);
+        margin-bottom: 24px;
+        overflow: hidden;
+    }
+    
+    .inventory-card .card-header-custom {
+        padding: 18px 20px;
+        border-bottom: 1px solid var(--border-color);
+        background: var(--bg-table-header);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .inventory-card .card-header-custom h5 {
+        margin: 0;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+    
+    .inventory-card .card-body-custom {
+        padding: 20px;
+    }
+    
+    .sabor-item {
+        display: flex;
+        align-items: center;
+        padding: 15px;
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        margin-bottom: 10px;
+        transition: all 0.3s ease;
+        background: var(--bg-card);
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    
+    .sabor-item:hover {
+        box-shadow: var(--shadow-md);
+        transform: translateY(-1px);
+    }
+    
+    .sabor-img {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        flex-shrink: 0;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: rgba(13, 110, 253, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        position: relative;
+    }
+    
+    .sabor-img img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 12px;
+    }
+    
+    .sabor-img:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+    
+    .sabor-img .sabor-emoji {
+        font-size: 1.8rem;
+    }
+    
+    .sabor-info {
+        flex: 1;
+        min-width: 150px;
+    }
+    
+    .sabor-name {
+        font-weight: 600;
+        font-size: 1.05rem;
+        color: var(--text-primary);
+        margin-bottom: 5px;
+    }
+    
+    .sabor-details {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+    
+    .sabor-detail-item {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+    
+    .sabor-detail-item strong {
+        color: var(--text-primary);
+    }
+    
+    .sabor-actions {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        flex-shrink: 0;
+    }
+    
+    .stock-badge {
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    
+    .stock-high { background: rgba(25, 135, 84, 0.1); color: #198754; }
+    .stock-medium { background: rgba(255, 193, 7, 0.1); color: #F59E0B; }
+    .stock-low { background: rgba(220, 53, 69, 0.1); color: #DC3545; }
+    .stock-out { background: rgba(108, 117, 125, 0.1); color: #6C757D; }
+    
+    .metodo-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 15px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        margin-bottom: 8px;
+        transition: all 0.3s ease;
+        background: var(--bg-card);
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .metodo-item:hover {
+        background: var(--bg-card-hover);
+    }
+    
+    .metodo-item.inactive {
+        opacity: 0.6;
+    }
+    
+    .metodo-info {
+        flex: 1;
+        min-width: 150px;
+    }
+    
+    .area-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 8px 15px;
+        background: var(--bg-badge-light);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        margin: 4px;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+    }
+    
+    .area-badge:hover {
+        background: var(--bg-card-hover);
+    }
+    
+    .area-badge .btn-close {
+        font-size: 0.5rem;
+        margin-left: 8px;
+    }
+    
+    .add-form {
+        background: var(--bg-add-form);
+        border: 2px dashed var(--bg-add-form-border);
+        border-radius: 10px;
+        padding: 20px;
+        transition: all 0.3s ease;
+    }
+    
+    .add-form:hover {
+        border-color: var(--primary);
+        background: var(--bg-add-form-hover);
+    }
+    
+    .feature-badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        margin-right: 5px;
+        white-space: nowrap;
+    }
+    
+    .feature-capture { background: rgba(13, 110, 253, 0.1); color: #0D6EFD; }
+    .feature-monto { background: rgba(25, 135, 84, 0.1); color: #198754; }
+    .feature-inactive { background: rgba(108, 117, 125, 0.1); color: #6C757D; }
+    
+    /* ========== MÓVIL ========== */
+    @media (max-width: 767.98px) {
+        .inventory-card .card-body-custom {
+            padding: 15px;
+        }
+        
+        .inventory-card .card-header-custom {
+            padding: 12px 15px;
+        }
+        
+        .inventory-card .card-header-custom h5 {
+            font-size: 0.95rem;
+        }
+        
+        .sabor-item {
+            padding: 12px;
+            gap: 10px;
+        }
+        
+        .sabor-img {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+        }
+        
+        .sabor-name {
+            font-size: 0.95rem;
+        }
+        
+        .sabor-details {
+            gap: 10px;
+        }
+        
+        .sabor-detail-item {
+            font-size: 0.75rem;
+        }
+        
+        .sabor-actions {
+            width: 100%;
+            justify-content: flex-start;
+            gap: 5px;
+        }
+        
+        .sabor-actions .btn {
+            padding: 6px 10px;
+            font-size: 0.75rem;
+            min-height: 34px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .metodo-item {
+            padding: 10px 12px;
+            gap: 8px;
+        }
+        
+        .metodo-actions {
+            display: flex;
+            gap: 4px;
+        }
+        
+        .metodo-actions .btn {
+            padding: 5px 8px;
+            font-size: 0.75rem;
+            min-height: 34px;
+        }
+        
+        .area-badge {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+        }
+        
+        .add-form {
+            padding: 15px;
+        }
+        
+        .modal-dialog {
+            margin: 10px;
+            max-width: calc(100% - 20px);
+        }
+        
+        .modal-body {
+            padding: 15px;
+            max-height: 65vh;
+            overflow-y: auto;
+        }
+        
+        .stock-badge {
+            padding: 3px 8px;
+            font-size: 0.7rem;
+        }
+    }
+    
+    @media (max-width: 575.98px) {
+        .sabor-item {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .sabor-img {
+            align-self: flex-start;
+            width: 60px;
+            height: 60px;
+        }
+        
+        .sabor-info {
+            width: 100%;
+        }
+        
+        .sabor-actions {
+            width: 100%;
+            justify-content: flex-start;
+            flex-wrap: wrap;
+        }
+        
+        .metodo-item {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .metodo-info {
+            width: 100%;
+        }
+        
+        .metodo-actions {
+            width: 100%;
+            justify-content: flex-start;
+        }
+        
+        .stat-card .stat-value {
+            font-size: 1.2rem;
+        }
+        
+        .stat-card .stat-icon {
+            width: 35px;
+            height: 35px;
+            font-size: 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    
+    <!-- Stats de Inventario -->
+    <div class="row g-4 mb-4">
+        <div class="col-xl-3 col-md-6 col-6">
+            <div class="stat-card">
+                <div class="stat-icon icon-blue">
+                    <i class="bi bi-box-seam"></i>
+                </div>
+                <div class="stat-value">{{ stats_inventario.total_productos }}</div>
+                <div class="stat-label">En Stock</div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 col-6">
+            <div class="stat-card">
+                <div class="stat-icon icon-green">
+                    <i class="bi bi-currency-dollar"></i>
+                </div>
+                <div class="stat-value">${{ "%.2f"|format(stats_inventario.valor_inventario) }}</div>
+                <div class="stat-label">Valor Inventario</div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 col-6">
+            <div class="stat-card">
+                <div class="stat-icon icon-red">
+                    <i class="bi bi-exclamation-triangle"></i>
+                </div>
+                <div class="stat-value">{{ stats_inventario.productos_bajo_stock }}</div>
+                <div class="stat-label">Stock Bajo</div>
+                <div class="stat-change negative">
+                    <i class="bi bi-arrow-down"></i> ≤ 10 unidades
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 col-6">
+            <div class="stat-card">
+                <div class="stat-icon icon-purple">
+                    <i class="bi bi-grid"></i>
+                </div>
+                <div class="stat-value">{{ stats_inventario.total_sabores }}</div>
+                <div class="stat-label">Sabores</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row g-4">
+        <!-- Gestión de Sabores -->
+        <div class="col-xl-7">
+            <div class="inventory-card">
+                <div class="card-header-custom">
+                    <h5><i class="bi bi-cup-straw me-2"></i>Sabores y Stock</h5>
+                    <button class="btn btn-sm btn-primary" onclick="openModal('addSaborModal')">
+                        <i class="bi bi-plus-circle"></i> <span class="d-none d-sm-inline">Nuevo Sabor</span>
+                    </button>
+                </div>
+                <div class="card-body-custom">
+                    
+                    {% if sabores %}
+                        {% for s in sabores %}
+                        <div class="sabor-item">
+                            <!-- Imagen del sabor -->
+                            <div class="sabor-img" {% if s.imagen %}onclick="openModal('imagenModal{{ s.id }}')" title="Click para ver imagen"{% endif %}>
+                                {% if s.imagen %}
+                                <img src="{{ url_for('static', filename='img/sabores/' + s.imagen) }}" alt="{{ s.nombre }}">
+                                {% else %}
+                                <span class="sabor-emoji">🍧</span>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="sabor-info">
+                                <div class="sabor-name">{{ s.nombre.capitalize() }}</div>
+                                <div class="sabor-details">
+                                    <span class="sabor-detail-item">
+                                        💰 <strong>${{ "%.2f"|format(s.precio_usd) }}</strong>
+                                    </span>
+                                    <span class="sabor-detail-item">
+                                        📦 Inicial: <strong>{{ s.stock_inicial }}</strong>
+                                    </span>
+                                    <span class="sabor-detail-item">
+                                        {% if s.stock_disponible > 20 %}
+                                            <span class="stock-badge stock-high">{{ s.stock_disponible }} disp.</span>
+                                        {% elif s.stock_disponible > 10 %}
+                                            <span class="stock-badge stock-medium">{{ s.stock_disponible }} disp.</span>
+                                        {% elif s.stock_disponible > 0 %}
+                                            <span class="stock-badge stock-low">{{ s.stock_disponible }} disp.</span>
+                                        {% else %}
+                                            <span class="stock-badge stock-out">Agotado</span>
+                                        {% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div class="sabor-actions">
+                                <button class="btn btn-sm btn-outline-warning btn-action" 
+                                        onclick="openModal('editPrecioModal{{ s.id }}')"
+                                        title="Editar precio">
+                                    <i class="bi bi-tag"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-info btn-action" 
+                                        onclick="openModal('editStockModal{{ s.id }}')"
+                                        title="Ajustar stock">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-success btn-action" 
+                                        onclick="openModal('addStockModal{{ s.id }}')"
+                                        title="Agregar stock">
+                                    <i class="bi bi-plus-circle"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary btn-action" 
+                                        onclick="openModal('editImagenModal{{ s.id }}')"
+                                        title="{% if s.imagen %}Cambiar{% else %}Subir{% endif %} imagen">
+                                    <i class="bi bi-camera"></i>
+                                </button>
+                                <form action="{{ url_for('eliminar_sabor', sabor_id=s.id) }}" method="POST" style="display:inline;"
+                                      onsubmit="return confirm('¿Eliminar {{ s.nombre.capitalize() }} permanentemente?')">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger btn-action" title="Eliminar">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                        
+                        <!-- Modal Ver Imagen -->
+                        {% if s.imagen %}
+                        <div class="modal fade" id="imagenModal{{ s.id }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered modal-lg">
+                                <div class="modal-content">
+                                    <div class="modal-header bg-dark text-white">
+                                        <h6 class="modal-title">{{ s.nombre.capitalize() }} - Imagen de Referencia</h6>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body text-center p-0">
+                                        <img src="{{ url_for('static', filename='img/sabores/' + s.imagen) }}" 
+                                             alt="{{ s.nombre }}" 
+                                             style="width: 100%; max-height: 70vh; object-fit: contain;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Modal Editar Imagen -->
+                        <div class="modal fade" id="editImagenModal{{ s.id }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-sm">
+                                <div class="modal-content">
+                                    <div class="modal-header bg-secondary text-white">
+                                        <h6 class="modal-title fw-bold">
+                                            <i class="bi bi-camera"></i> 
+                                            {% if s.imagen %}Cambiar Imagen{% else %}Subir Imagen{% endif %}: 
+                                            {{ s.nombre.capitalize() }}
+                                        </h6>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <form action="{{ url_for('editar_sabor', sabor_id=s.id) }}" method="POST" enctype="multipart/form-data">
+                                        <div class="modal-body">
+                                            {% if s.imagen %}
+                                            <div class="text-center mb-3">
+                                                <img src="{{ url_for('static', filename='img/sabores/' + s.imagen) }}" 
+                                                     alt="{{ s.nombre }}" 
+                                                     style="width: 100%; max-height: 150px; object-fit: cover; border-radius: 8px;">
+                                            </div>
+                                            <div class="form-check mb-3 p-2 bg-danger bg-opacity-10 rounded">
+                                                <input class="form-check-input" type="checkbox" name="borrar_imagen" value="si" id="borrarImagen{{ s.id }}">
+                                                <label class="form-check-label text-danger small" for="borrarImagen{{ s.id }}">
+                                                    <i class="bi bi-trash"></i> Eliminar imagen actual
+                                                </label>
+                                            </div>
+                                            {% endif %}
+                                            <input type="hidden" name="accion" value="actualizar_imagen">
+                                            <div class="mb-3">
+                                                <label class="form-label">
+                                                    {% if s.imagen %}Nueva{% else %}Seleccionar{% endif %} Imagen
+                                                </label>
+                                                <input type="file" name="imagen" class="form-control" accept="image/*" {% if not s.imagen %}required{% endif %}>
+                                                <small class="text-muted">Formatos: JPG, PNG, GIF, WEBP</small>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                            <button type="submit" class="btn btn-sm btn-secondary fw-bold text-white">Guardar</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Modal Editar Precio -->
+                        <div class="modal fade" id="editPrecioModal{{ s.id }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-sm">
+                                <div class="modal-content">
+                                    <div class="modal-header bg-warning">
+                                        <h6 class="modal-title fw-bold">
+                                            <i class="bi bi-tag"></i> Editar Precio
+                                        </h6>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <form action="{{ url_for('editar_sabor', sabor_id=s.id) }}" method="POST">
+                                        <div class="modal-body">
+                                            <p><strong>{{ s.nombre.capitalize() }}</strong></p>
+                                            <p class="text-muted">Precio actual: <b>${{ "%.2f"|format(s.precio_usd) }}</b></p>
+                                            <input type="hidden" name="accion" value="actualizar_precio">
+                                            <div class="mb-3">
+                                                <label class="form-label">Nuevo Precio (USD)</label>
+                                                <input type="number" step="0.01" name="precio_usd" 
+                                                       class="form-control" value="{{ s.precio_usd }}" required min="0.01">
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                            <button type="submit" class="btn btn-sm btn-warning fw-bold">Actualizar</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Modal Ajustar Stock -->
+                        <div class="modal fade" id="editStockModal{{ s.id }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-sm">
+                                <div class="modal-content">
+                                    <div class="modal-header bg-info text-white">
+                                        <h6 class="modal-title fw-bold">
+                                            <i class="bi bi-pencil"></i> Ajustar Stock
+                                        </h6>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <form action="{{ url_for('editar_sabor', sabor_id=s.id) }}" method="POST">
+                                        <div class="modal-body">
+                                            <p><strong>{{ s.nombre.capitalize() }}</strong></p>
+                                            <p class="text-muted">
+                                                Stock inicial: <b>{{ s.stock_inicial }}</b><br>
+                                                Stock disponible: <b>{{ s.stock_disponible }}</b>
+                                            </p>
+                                            <input type="hidden" name="accion" value="actualizar_stock">
+                                            <div class="mb-3">
+                                                <label class="form-label">Nuevo Stock Disponible</label>
+                                                <input type="number" name="stock_disponible" class="form-control" 
+                                                       value="{{ s.stock_disponible }}" required min="0">
+                                                <small class="text-muted">El stock inicial se ajustará automáticamente</small>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                            <button type="submit" class="btn btn-sm btn-info fw-bold text-white">Ajustar</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Modal Agregar Stock -->
+                        <div class="modal fade" id="addStockModal{{ s.id }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-sm">
+                                <div class="modal-content">
+                                    <div class="modal-header bg-success text-white">
+                                        <h6 class="modal-title fw-bold">
+                                            <i class="bi bi-plus-circle"></i> Agregar Stock
+                                        </h6>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <form action="{{ url_for('editar_sabor', sabor_id=s.id) }}" method="POST">
+                                        <div class="modal-body">
+                                            <p><strong>{{ s.nombre.capitalize() }}</strong></p>
+                                            <p class="text-muted">Stock actual: <b>{{ s.stock_disponible }}</b> unidades</p>
+                                            <input type="hidden" name="accion" value="agregar_stock">
+                                            <div class="mb-3">
+                                                <label class="form-label">Cantidad a Agregar</label>
+                                                <input type="number" name="cantidad_agregar" class="form-control" 
+                                                       required min="1" placeholder="Ej: 20">
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                            <button type="submit" class="btn btn-sm btn-success fw-bold">Agregar</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+                            <h5 class="mt-3">No hay sabores registrados</h5>
+                            <p>Agrega tu primer sabor para comenzar</p>
+                        </div>
+                    {% endif %}
+                    
+                </div>
+            </div>
+        </div>
+        
+        <!-- Columna Derecha: Áreas y Métodos de Pago -->
+        <div class="col-xl-5">
+            
+            <!-- Gestión de Métodos de Pago -->
+            <div class="inventory-card">
+                <div class="card-header-custom">
+                    <h5><i class="bi bi-credit-card me-2"></i>Métodos de Pago</h5>
+                </div>
+                <div class="card-body-custom">
+                    
+                    {% for metodo in todos_metodos %}
+                    <div class="metodo-item {% if not metodo.activo %}inactive{% endif %}">
+                        <div class="metodo-info">
+                            <div class="fw-semibold">
+                                {% if metodo.codigo == 'pago_movil' %}📱
+                                {% elif metodo.codigo == 'efectivo_bs' %}💵
+                                {% elif metodo.codigo == 'efectivo_usd' %}💲
+                                {% else %}💳{% endif %}
+                                {{ metodo.nombre }}
+                            </div>
+                            <small class="text-muted">{{ metodo.codigo }}</small>
+                            <div class="mt-1">
+                                {% if metodo.requiere_capture %}
+                                    <span class="feature-badge feature-capture">📸 Capture</span>
+                                {% endif %}
+                                {% if metodo.requiere_monto_bs %}
+                                    <span class="feature-badge feature-monto">💰 Monto Bs</span>
+                                {% endif %}
+                                {% if not metodo.activo %}
+                                    <span class="feature-badge feature-inactive">⏸️ Inactivo</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="metodo-actions">
+                            <form action="{{ url_for('toggle_metodo_pago', metodo_id=metodo.id) }}" method="POST" style="display:inline;">
+                                <button type="submit" class="btn btn-sm btn-{{ 'success' if metodo.activo else 'secondary' }}"
+                                        title="{{ 'Desactivar' if metodo.activo else 'Activar' }}">
+                                    <i class="bi bi-{{ 'toggle-on' if metodo.activo else 'toggle-off' }}"></i>
+                                </button>
+                            </form>
+                            {% if metodo.codigo not in ['pago_movil', 'efectivo_bs', 'efectivo_usd'] %}
+                            <form action="{{ url_for('eliminar_metodo_pago', metodo_id=metodo.id) }}" method="POST" style="display:inline;"
+                                  onsubmit="return confirm('¿Eliminar método {{ metodo.nombre }}?')">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    <div class="add-form mt-3">
+                        <h6 class="fw-bold mb-3">Añadir Nuevo Método</h6>
+                        <form action="{{ url_for('agregar_metodo_pago') }}" method="POST">
+                            <div class="row g-2 mb-2">
+                                <div class="col-sm-6">
+                                    <input type="text" name="nombre" class="form-control form-control-sm" 
+                                           placeholder="Nombre del método" required>
+                                </div>
+                                <div class="col-sm-6">
+                                    <input type="text" name="codigo" class="form-control form-control-sm" 
+                                           placeholder="Código (ej: transferencia)" required>
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" name="requiere_capture" id="reqCapture">
+                                    <label class="form-check-label small" for="reqCapture">Requiere Capture</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" name="requiere_monto_bs" id="reqMonto">
+                                    <label class="form-check-label small" for="reqMonto">Requiere Monto Bs</label>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-sm btn-primary w-100">
+                                <i class="bi bi-plus-circle"></i> Agregar Método
+                            </button>
+                        </form>
+                    </div>
+                    
+                </div>
+            </div>
+            
+            <!-- Gestión de Áreas -->
+            <div class="inventory-card">
+                <div class="card-header-custom">
+                    <h5><i class="bi bi-building me-2"></i>Áreas Organizacionales</h5>
+                </div>
+                <div class="card-body-custom">
+                    
+                    <div class="mb-3">
+                        {% for a in areas %}
+                        <span class="area-badge">
+                            📍 {{ a.nombre }}
+                            <form action="{{ url_for('eliminar_area', area_id=a.id) }}" method="POST" style="display:inline;"
+                                  onsubmit="return confirm('¿Eliminar área {{ a.nombre }}?')">
+                                <button type="submit" class="btn-close" style="font-size: 0.5rem;" title="Eliminar"></button>
+                            </form>
+                        </span>
+                        {% else %}
+                        <p class="text-muted text-center py-3">No hay áreas configuradas</p>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="add-form">
+                        <h6 class="fw-bold mb-3">Añadir Nueva Área</h6>
+                        <form action="{{ url_for('agregar_area') }}" method="POST" class="d-flex gap-2">
+                            <input type="text" name="nombre" class="form-control form-control-sm" 
+                                   placeholder="Nombre del área" required>
+                            <button type="submit" class="btn btn-sm btn-primary flex-shrink-0">
+                                <i class="bi bi-plus-circle"></i> Agregar
+                            </button>
+                        </form>
+                    </div>
+                    
+                </div>
+            </div>
+            
+        </div>
+    </div>
+    
+</div>
+
+<!-- Modal Agregar Sabor -->
+<div class="modal fade" id="addSaborModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-plus-circle"></i> Nuevo Sabor
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('agregar_sabor') }}" method="POST" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nombre del Sabor</label>
+                        <input type="text" name="nombre" class="form-control" 
+                               placeholder="Ej: fresa, chocolate" required>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold">Stock Inicial</label>
+                            <input type="number" name="stock" class="form-control" 
+                                   placeholder="Cantidad" required min="1">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold">Precio (USD)</label>
+                            <input type="number" step="0.01" name="precio_usd" class="form-control" 
+                                   placeholder="Ej: 1.50" required min="0.01">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">📸 Foto del Sabor (opcional)</label>
+                        <input type="file" name="imagen" class="form-control" accept="image/*">
+                        <small class="text-muted">Para publicidad y referencia visual. Formatos: JPG, PNG, GIF, WEBP</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="bi bi-check-circle"></i> Agregar Sabor
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Función genérica para abrir modales
+function openModal(modalId) {
+    const modalElement = document.getElementById(modalId);
+    if (modalElement) {
+        const modal = new bootstrap.Modal(modalElement, {
+            backdrop: true,
+            keyboard: true,
+            focus: true
+        });
+        modal.show();
+    }
+}
+
+// Mejorar interacción táctil
+document.addEventListener('DOMContentLoaded', function() {
+    if ('ontouchstart' in window) {
+        document.querySelectorAll('.btn, .btn-action, .sabor-item, .metodo-item, .sabor-img').forEach(el => {
+            el.addEventListener('touchstart', function() {
+                this.style.opacity = '0.7';
+            });
+            el.addEventListener('touchend', function() {
+                this.style.opacity = '1';
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

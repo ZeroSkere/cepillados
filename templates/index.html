@@ -1,0 +1,581 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Cepillados{% endblock %}
+
+{% block page_title %}Dashboard Principal{% endblock %}
+{% block breadcrumb %}Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .despacho-card {
+        background: var(--bg-card);
+        border-radius: 12px;
+        padding: 25px;
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--border-color);
+        height: 100%;
+    }
+    
+    .despacho-card .card-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-right: 15px;
+        background: rgba(13, 110, 253, 0.1);
+        color: var(--primary);
+    }
+    
+    .btn-submit-pedido {
+        padding: 12px;
+        font-size: 1rem;
+        font-weight: 600;
+        border-radius: 10px;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-submit-pedido:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(13, 110, 253, 0.3);
+    }
+    
+    /* Imagen miniatura en tabla */
+    .sabor-thumb {
+        width: 35px;
+        height: 35px;
+        border-radius: 8px;
+        object-fit: cover;
+        flex-shrink: 0;
+    }
+    
+    .sabor-emoji-small {
+        font-size: 1.3rem;
+        width: 35px;
+        height: 35px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    
+    /* ========== MÓVIL ========== */
+    @media (max-width: 767.98px) {
+        .despacho-card {
+            padding: 15px;
+        }
+        
+        .despacho-card .card-icon {
+            width: 40px;
+            height: 40px;
+            font-size: 1.2rem;
+            margin-right: 10px;
+        }
+        
+        .btn-submit-pedido {
+            padding: 10px;
+            font-size: 0.9rem;
+        }
+        
+        .stat-card .stat-value {
+            font-size: 1.3rem;
+        }
+        
+        .table-card .table-header {
+            padding: 10px 15px;
+        }
+        
+        .table-card .table-header h5 {
+            font-size: 0.9rem;
+        }
+        
+        .btn-group .btn-action {
+            padding: 5px 8px;
+            font-size: 0.7rem;
+            min-height: 32px;
+        }
+        
+        .modal-dialog {
+            margin: 10px;
+            max-width: calc(100% - 20px);
+        }
+        
+        .modal-body {
+            padding: 15px;
+            max-height: 65vh;
+            overflow-y: auto;
+        }
+        
+        .sabor-thumb {
+            width: 28px;
+            height: 28px;
+        }
+    }
+    
+    @media (max-width: 575.98px) {
+        .row.g-4 {
+            --bs-gutter-y: 0.5rem;
+            --bs-gutter-x: 0.5rem;
+        }
+        
+        .despacho-card {
+            padding: 12px;
+        }
+        
+        .form-control, .form-select {
+            padding: 6px 8px;
+            font-size: 0.85rem;
+        }
+        
+        .form-label {
+            font-size: 0.7rem;
+        }
+        
+        .btn-group {
+            flex-wrap: wrap;
+            gap: 2px;
+        }
+        
+        .btn-group .btn-action {
+            padding: 4px 6px;
+            font-size: 0.65rem;
+            min-height: 30px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    
+    <!-- Stats Cards Row -->
+    <div class="row g-4 mb-4">
+        <div class="col-xl-3 col-md-6 col-6">
+            <div class="stat-card">
+                <div class="stat-icon icon-blue">
+                    <i class="bi bi-cart-check"></i>
+                </div>
+                <div class="stat-value">{{ stats.pedidos_hoy }}</div>
+                <div class="stat-label">Pedidos Hoy</div>
+                <div class="stat-change positive">
+                    <i class="bi bi-arrow-up"></i> En tiempo real
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 col-6">
+            <div class="stat-card">
+                <div class="stat-icon icon-green">
+                    <i class="bi bi-cash-stack"></i>
+                </div>
+                <div class="stat-value">${{ "%.2f"|format(stats.recaudado_hoy_usd) }}</div>
+                <div class="stat-label">Recaudado Hoy</div>
+                <div class="stat-change">
+                    Bs. {{ "%.2f"|format(stats.recaudado_hoy_bs) }}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 col-6">
+            <div class="stat-card">
+                <div class="stat-icon icon-orange">
+                    <i class="bi bi-clock-history"></i>
+                </div>
+                <div class="stat-value">{{ stats.pendientes }}</div>
+                <div class="stat-label">Pendientes</div>
+                <div class="stat-change" style="color: #DC3545;">
+                    <i class="bi bi-exclamation-circle"></i> Por cobrar
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 col-6">
+            <div class="stat-card">
+                <div class="stat-icon icon-red">
+                    <i class="bi bi-exclamation-triangle"></i>
+                </div>
+                <div class="stat-value">{{ stats.stock_bajo }}</div>
+                <div class="stat-label">Stock Bajo</div>
+                <div class="stat-change" style="color: #DC3545;">
+                    <i class="bi bi-arrow-down"></i> ≤ 10 unidades
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Formulario de Despacho Rápido -->
+        <div class="col-xl-5 col-lg-6">
+            <div class="despacho-card">
+                <div class="d-flex align-items-center mb-4">
+                    <div class="card-icon">
+                        <i class="bi bi-lightning-charge"></i>
+                    </div>
+                    <div>
+                        <h5 class="fw-bold mb-1">Despacho Rápido</h5>
+                        <small class="text-muted">Registrar nuevo pedido</small>
+                    </div>
+                </div>
+                
+                <form action="{{ url_for('registrar_pedido') }}" method="POST" enctype="multipart/form-data" id="formDespacho">
+                    <div class="mb-3">
+                        <label class="form-label">Nombre del Cliente</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-person"></i></span>
+                            <input type="text" name="nombre" class="form-control" placeholder="Nombre completo" required>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6 mb-2 mb-md-0">
+                            <label class="form-label">Área</label>
+                            <select name="area_id" class="form-select" required>
+                                <option value="">Seleccionar...</option>
+                                {% for a in areas %}
+                                <option value="{{ a.id }}">{{ a.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Sabor</label>
+                            <select name="sabor_id" class="form-select" required>
+                                <option value="">Seleccionar...</option>
+                                {% for s in sabores %}
+                                    {% if s.stock_disponible > 0 %}
+                                    <option value="{{ s.id }}">
+                                        {{ s.nombre.capitalize() }} - ${{ "%.2f"|format(s.precio_usd) }} ({{ s.stock_disponible }})
+                                    </option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3 align-items-end">
+                        <div class="col-4">
+                            <label class="form-label">Cantidad</label>
+                            <input type="number" name="cantidad" class="form-control" value="1" min="1" required>
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label">¿Pagó?</label>
+                            <select name="pago" id="selectPago" class="form-select" onchange="togglePagoOptions()">
+                                <option value="no">No</option>
+                                <option value="si">Sí</option>
+                            </select>
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label">¿Retiró?</label>
+                            <select name="entrega" class="form-select">
+                                <option value="no">No</option>
+                                <option value="si">Sí</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div id="bloqueMetodoPago" style="display: none;">
+                        <div class="mb-3">
+                            <label class="form-label">Método de Pago</label>
+                            <select name="metodo_pago_id" id="selectMetodo" class="form-select" onchange="toggleMetodoOptions()">
+                                <option value="">Seleccionar método...</option>
+                                {% for metodo in metodos_pago %}
+                                    {% if metodo.activo %}
+                                    <option value="{{ metodo.id }}" 
+                                            data-requiere-capture="{{ 'true' if metodo.requiere_capture else 'false' }}"
+                                            data-requiere-monto-bs="{{ 'true' if metodo.requiere_monto_bs else 'false' }}">
+                                        {{ metodo.nombre }}
+                                    </option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div id="bloqueMontoBs" style="display: none;">
+                            <div class="mb-3">
+                                <label class="form-label text-success">
+                                    <i class="bi bi-cash"></i> Monto Recibido (Bs)
+                                </label>
+                                <input type="number" step="0.01" name="monto_pagado_bs" class="form-control" placeholder="Ej: 80.50">
+                            </div>
+                        </div>
+                        
+                        <div id="bloqueCapture" style="display: none;">
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <i class="bi bi-camera"></i> Comprobante
+                                </label>
+                                <input type="file" name="capture" class="form-control" accept="image/*">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary w-100 btn-submit-pedido" {% if not areas or not sabores %}disabled{% endif %}>
+                        <i class="bi bi-check-circle"></i> 
+                        {% if not areas or not sabores %}
+                            Configure Catálogos Primero
+                        {% else %}
+                            Registrar Pedido
+                        {% endif %}
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Últimos Pedidos -->
+        <div class="col-xl-7 col-lg-6">
+            <div class="table-card">
+                <div class="table-header">
+                    <h5><i class="bi bi-list-ul me-2"></i>Últimas Transacciones</h5>
+                    <a href="{{ url_for('historial') }}" class="btn btn-sm btn-outline-primary">
+                        Ver Todo <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+                <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Producto</th>
+                                <th>Total</th>
+                                <th>Estado</th>
+                                <th class="no-print">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in pedidos %}
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold">{{ p.nombre }}</div>
+                                    <small class="text-muted">{{ p.area.nombre }}</small>
+                                    <br>
+                                    <small class="text-muted">{{ p.fecha_registro.strftime('%d/%m %H:%M') }}</small>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        {% if p.sabor.imagen %}
+                                        <img src="{{ url_for('static', filename='img/sabores/' + p.sabor.imagen) }}" 
+                                             alt="{{ p.sabor.nombre }}" 
+                                             class="sabor-thumb d-none d-md-inline">
+                                        {% else %}
+                                        <span class="sabor-emoji-small d-none d-md-inline">🍧</span>
+                                        {% endif %}
+                                        <div>
+                                            <span class="fw-semibold">{{ p.sabor.nombre.capitalize() }}</span>
+                                            <span class="badge bg-secondary ms-1">x{{ p.cantidad }}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="fw-bold">${{ "%.2f"|format(p.cantidad * p.sabor.precio_usd) }}</div>
+                                    <small class="text-muted">Bs. {{ "%.2f"|format((p.cantidad * p.sabor.precio_usd) * tasa_bcv) }}</small>
+                                </td>
+                                <td>
+                                    {% if p.pago == 'si' %}
+                                        <span class="badge badge-status badge-pagado">
+                                            <i class="bi bi-check-circle"></i> Pagado
+                                        </span>
+                                        {% if p.metodo_pago_rel %}
+                                            <br><small class="text-muted">{{ p.metodo_pago_rel.nombre }}</small>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="badge badge-status badge-pendiente">
+                                            <i class="bi bi-clock"></i> Pendiente
+                                        </span>
+                                    {% endif %}
+                                    
+                                    {% if p.entrega == 'si' %}
+                                        <span class="badge badge-status badge-entregado ms-1">
+                                            <i class="bi bi-box-seam"></i>
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="no-print">
+                                    <div class="d-flex gap-1">
+                                        <button type="button" class="btn btn-sm btn-outline-warning btn-action" 
+                                                onclick="openEditModal('editModal{{ p.id }}')"
+                                                title="Editar">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <a href="{{ url_for('generar_factura', pedido_id=p.id) }}" 
+                                           class="btn btn-sm btn-outline-info btn-action" 
+                                           target="_blank" title="Factura">
+                                            <i class="bi bi-file-pdf"></i>
+                                        </a>
+                                        <form action="{{ url_for('eliminar_pedido', pedido_id=p.id) }}" method="POST" 
+                                              style="display:inline;"
+                                              onsubmit="return confirm('¿Eliminar este pedido? Se restaurará el stock.')">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger btn-action" title="Eliminar">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            
+                            <!-- Modal Editar Pedido -->
+                            <div class="modal fade" id="editModal{{ p.id }}" tabindex="-1" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header bg-warning">
+                                            <h5 class="modal-title fw-bold">
+                                                <i class="bi bi-pencil-square"></i> Editar Pedido
+                                            </h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <form action="{{ url_for('editar_pedido', pedido_id=p.id) }}" method="POST" enctype="multipart/form-data">
+                                            <div class="modal-body">
+                                                <div class="mb-3 p-3 bg-light rounded">
+                                                    <div class="d-flex align-items-center gap-2 mb-2">
+                                                        {% if p.sabor.imagen %}
+                                                        <img src="{{ url_for('static', filename='img/sabores/' + p.sabor.imagen) }}" 
+                                                             alt="{{ p.sabor.nombre }}" 
+                                                             style="width: 40px; height: 40px; object-fit: cover; border-radius: 8px;">
+                                                        {% endif %}
+                                                        <div>
+                                                            <strong>{{ p.nombre }}</strong> - {{ p.area.nombre }}<br>
+                                                            <small>{{ p.sabor.nombre.capitalize() }} x{{ p.cantidad }} = ${{ "%.2f"|format(p.cantidad * p.sabor.precio_usd) }}</small><br>
+                                                            <small class="text-muted">{{ p.fecha_registro.strftime('%d/%m/%Y %H:%M') }}</small>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-bold">Estado de Pago</label>
+                                                    <select name="pago" class="form-select">
+                                                        <option value="si" {% if p.pago == 'si' %}selected{% endif %}>Pagado</option>
+                                                        <option value="no" {% if p.pago == 'no' %}selected{% endif %}>Pendiente</option>
+                                                    </select>
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-bold">Método de Pago</label>
+                                                    <select name="metodo_pago_id" class="form-select">
+                                                        <option value="">Seleccionar...</option>
+                                                        {% for metodo in metodos_pago %}
+                                                            {% if metodo.activo %}
+                                                            <option value="{{ metodo.id }}" {% if p.metodo_pago_id == metodo.id %}selected{% endif %}>
+                                                                {{ metodo.nombre }}
+                                                            </option>
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-bold">Estado de Entrega</label>
+                                                    <select name="entrega" class="form-select">
+                                                        <option value="si" {% if p.entrega == 'si' %}selected{% endif %}>Entregado</option>
+                                                        <option value="no" {% if p.entrega == 'no' %}selected{% endif %}>Por entregar</option>
+                                                    </select>
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-bold">Actualizar Comprobante</label>
+                                                    <input type="file" name="capture" class="form-control" accept="image/*">
+                                                    {% if p.capture_img %}
+                                                        <div class="form-check mt-2 p-2 bg-danger bg-opacity-10 rounded">
+                                                            <input class="form-check-input" type="checkbox" name="borrar_capture" value="si" id="borrarCapture{{ p.id }}">
+                                                            <label class="form-check-label text-danger small" for="borrarCapture{{ p.id }}">
+                                                                <i class="bi bi-trash"></i> Eliminar comprobante actual
+                                                            </label>
+                                                        </div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                                                <button type="submit" class="btn btn-success btn-sm">
+                                                    <i class="bi bi-check-lg"></i> Guardar Cambios
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4 text-muted">
+                                    <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                                    <p class="mt-2">No hay pedidos registrados aún</p>
+                                    <small>Comienza registrando un pedido en el formulario</small>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Función para abrir modal de edición
+function openEditModal(modalId) {
+    const modalElement = document.getElementById(modalId);
+    if (modalElement) {
+        const modal = new bootstrap.Modal(modalElement, {
+            backdrop: true,
+            keyboard: true,
+            focus: true
+        });
+        modal.show();
+    }
+}
+
+function togglePagoOptions() {
+    const pago = document.getElementById('selectPago').value;
+    const bloqueMetodo = document.getElementById('bloqueMetodoPago');
+    const bloqueMonto = document.getElementById('bloqueMontoBs');
+    const bloqueCapture = document.getElementById('bloqueCapture');
+    
+    if (pago === 'si') {
+        bloqueMetodo.style.display = 'block';
+        bloqueMonto.style.display = 'none';
+        bloqueCapture.style.display = 'none';
+        toggleMetodoOptions();
+    } else {
+        bloqueMetodo.style.display = 'none';
+        bloqueMonto.style.display = 'none';
+        bloqueCapture.style.display = 'none';
+    }
+}
+
+function toggleMetodoOptions() {
+    const selectMetodo = document.getElementById('selectMetodo');
+    const selectedOption = selectMetodo.options[selectMetodo.selectedIndex];
+    const bloqueMonto = document.getElementById('bloqueMontoBs');
+    const bloqueCapture = document.getElementById('bloqueCapture');
+    
+    if (selectedOption && selectedOption.value) {
+        const requiereCapture = selectedOption.getAttribute('data-requiere-capture') === 'true';
+        const requiereMontoBs = selectedOption.getAttribute('data-requiere-monto-bs') === 'true';
+        
+        bloqueMonto.style.display = requiereMontoBs ? 'block' : 'none';
+        bloqueCapture.style.display = requiereCapture ? 'block' : 'none';
+    } else {
+        bloqueMonto.style.display = 'none';
+        bloqueCapture.style.display = 'none';
+    }
+}
+
+// Inicializar estado y mejorar interacción táctil
+document.addEventListener('DOMContentLoaded', function() {
+    togglePagoOptions();
+    
+    if ('ontouchstart' in window) {
+        document.querySelectorAll('.btn, .btn-action').forEach(btn => {
+            btn.addEventListener('touchstart', function() {
+                this.style.opacity = '0.7';
+            });
+            btn.addEventListener('touchend', function() {
+                this.style.opacity = '1';
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

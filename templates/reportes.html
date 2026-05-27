@@ -1,0 +1,654 @@
+
+{% extends "base.html" %}
+
+{% block title %}Reportes - Cepillados{% endblock %}
+
+{% block page_title %}Reportes y Estadísticas{% endblock %}
+{% block breadcrumb %}Reportes{% endblock %}
+
+{% block extra_css %}
+<style>
+    .chart-container {
+        position: relative;
+        height: 300px;
+        width: 100%;
+    }
+    
+    .chart-container-lg {
+        position: relative;
+        height: 350px;
+        width: 100%;
+    }
+    
+    .metric-card {
+        background: var(--bg-card);
+        border-radius: 12px;
+        padding: 20px;
+        border: 1px solid var(--border-color);
+        text-align: center;
+        transition: all 0.3s ease;
+        height: 100%;
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .metric-card:hover {
+        box-shadow: var(--shadow-md);
+        transform: translateY(-2px);
+    }
+    
+    .metric-value {
+        font-size: 2.2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+    
+    .metric-label {
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+        font-weight: 500;
+        margin-top: 5px;
+    }
+    
+    .progress {
+        height: 8px;
+        border-radius: 4px;
+        background: var(--bg-progress);
+    }
+    
+    .ranking-item {
+        display: flex;
+        align-items: center;
+        padding: 12px 15px;
+        border-bottom: 1px solid var(--border-light);
+        transition: all 0.3s ease;
+    }
+    
+    .ranking-item:hover {
+        background: var(--bg-card-hover);
+    }
+    
+    .ranking-item:last-child {
+        border-bottom: none;
+    }
+    
+    .ranking-number {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--ranking-bg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        margin-right: 12px;
+        font-size: 0.85rem;
+        flex-shrink: 0;
+        color: var(--text-primary);
+    }
+    
+    .ranking-number.top1 { background: #FFD700; color: #000; }
+    .ranking-number.top2 { background: #C0C0C0; color: #000; }
+    .ranking-number.top3 { background: #CD7F32; color: #FFF; }
+    
+    .report-card {
+        background: var(--bg-card);
+        border-radius: 12px;
+        padding: 25px;
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--border-color);
+        margin-bottom: 24px;
+        height: 100%;
+    }
+    
+    .report-card h5 {
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 20px;
+    }
+    
+    .export-card {
+        background: var(--bg-card);
+        border-radius: 12px;
+        padding: 30px;
+        text-align: center;
+        border: 1px solid var(--border-color);
+        transition: all 0.3s ease;
+        height: 100%;
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .export-card:hover {
+        box-shadow: var(--shadow-md);
+        transform: translateY(-2px);
+    }
+    
+    .export-icon {
+        font-size: 3rem;
+        margin-bottom: 15px;
+    }
+    
+    .no-data {
+        text-align: center;
+        padding: 30px 15px;
+        color: var(--text-muted);
+    }
+    
+    .no-data i {
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+        display: block;
+    }
+    
+    /* ========== MÓVIL ========== */
+    @media (max-width: 767.98px) {
+        .chart-container {
+            height: 250px;
+        }
+        
+        .chart-container-lg {
+            height: 280px;
+        }
+        
+        .metric-card {
+            padding: 15px;
+        }
+        
+        .metric-value {
+            font-size: 1.6rem;
+        }
+        
+        .metric-label {
+            font-size: 0.75rem;
+        }
+        
+        .report-card {
+            padding: 15px;
+        }
+        
+        .report-card h5 {
+            font-size: 0.95rem;
+            margin-bottom: 15px;
+        }
+        
+        .ranking-item {
+            padding: 10px;
+        }
+        
+        .ranking-number {
+            width: 28px;
+            height: 28px;
+            font-size: 0.75rem;
+            margin-right: 10px;
+        }
+        
+        .ranking-item .fw-semibold {
+            font-size: 0.85rem;
+        }
+        
+        .ranking-item .text-muted {
+            font-size: 0.7rem;
+        }
+        
+        .export-card {
+            padding: 20px;
+        }
+        
+        .export-icon {
+            font-size: 2.5rem;
+        }
+        
+        .export-card h5 {
+            font-size: 1rem;
+        }
+        
+        .export-card .btn-lg {
+            padding: 8px 16px;
+            font-size: 0.9rem;
+        }
+    }
+    
+    @media (max-width: 575.98px) {
+        .chart-container {
+            height: 200px;
+        }
+        
+        .chart-container-lg {
+            height: 220px;
+        }
+        
+        .metric-card {
+            padding: 12px;
+        }
+        
+        .metric-value {
+            font-size: 1.3rem;
+        }
+        
+        .report-card {
+            padding: 12px;
+            margin-bottom: 15px;
+        }
+        
+        .ranking-item {
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        
+        .ranking-item .flex-grow-1 {
+            flex: 1;
+            min-width: 100px;
+        }
+        
+        .ranking-item .text-end {
+            width: 100%;
+            text-align: left !important;
+            padding-left: 44px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    
+    <!-- Métricas Principales -->
+    <div class="row g-3 g-md-4 mb-4">
+        <div class="col-6 col-xl-3">
+            <div class="metric-card">
+                <div class="metric-label">Total Pedidos</div>
+                <div class="metric-value">{{ total_pedidos }}</div>
+                <small class="text-success">
+                    <i class="bi bi-check-circle"></i> {{ total_pagados }} pagados
+                </small>
+            </div>
+        </div>
+        
+        <div class="col-6 col-xl-3">
+            <div class="metric-card">
+                <div class="metric-label">Facturado (USD)</div>
+                <div class="metric-value text-primary">${{ "%.2f"|format(total_ventas_usd) }}</div>
+                <small class="text-muted">
+                    Bs. {{ "%.2f"|format(total_recaudado_bs) }}
+                </small>
+            </div>
+        </div>
+        
+        <div class="col-6 col-xl-3">
+            <div class="metric-card">
+                <div class="metric-label">Tasa de Pago</div>
+                <div class="metric-value text-success">{{ tasa_pago }}%</div>
+                <div class="progress mt-2">
+                    <div class="progress-bar bg-success" style="width: {{ tasa_pago }}%"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-6 col-xl-3">
+            <div class="metric-card">
+                <div class="metric-label">Pendientes</div>
+                <div class="metric-value text-danger">{{ total_pendientes }}</div>
+                <small class="text-danger">
+                    <i class="bi bi-exclamation-circle"></i> Por cobrar
+                </small>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Gráficos Principales -->
+    <div class="row g-3 g-md-4 mb-4">
+        <!-- Ventas Diarias -->
+        <div class="col-lg-8">
+            <div class="report-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0">
+                        <i class="bi bi-graph-up text-primary me-2"></i>Ventas Diarias
+                    </h5>
+                    <span class="badge bg-primary d-none d-md-inline">Últimos 30 días</span>
+                </div>
+                {% if ventas_diarias %}
+                <div class="chart-container-lg">
+                    <canvas id="ventasDiariasChart"></canvas>
+                </div>
+                {% else %}
+                <div class="no-data">
+                    <i class="bi bi-graph-up"></i>
+                    <p>No hay datos de ventas disponibles</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Distribución por Método de Pago -->
+        <div class="col-lg-4">
+            <div class="report-card">
+                <h5 class="mb-3">
+                    <i class="bi bi-pie-chart text-info me-2"></i>Métodos de Pago
+                </h5>
+                {% if ventas_por_metodo %}
+                <div class="chart-container">
+                    <canvas id="metodosPagoChart"></canvas>
+                </div>
+                <div class="mt-3">
+                    {% for metodo, total in ventas_por_metodo.items() %}
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <small class="text-muted">{{ metodo }}</small>
+                        <small class="fw-semibold">${{ "%.2f"|format(total) }}</small>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="no-data">
+                    <i class="bi bi-pie-chart"></i>
+                    <p>Sin datos</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Rankings -->
+    <div class="row g-3 g-md-4 mb-4">
+        <!-- Top Sabores -->
+        <div class="col-lg-6">
+            <div class="report-card">
+                <h5 class="mb-3">
+                    <i class="bi bi-trophy text-warning me-2"></i>Top Sabores
+                </h5>
+                
+                {% if ventas_por_sabor %}
+                    {% for sabor, cantidad, total_usd in ventas_por_sabor[:5] %}
+                    <div class="ranking-item">
+                        <div class="ranking-number {% if loop.index == 1 %}top1{% elif loop.index == 2 %}top2{% elif loop.index == 3 %}top3{% endif %}">
+                            {{ loop.index }}
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="fw-semibold">{{ sabor.capitalize() }}</div>
+                            <small class="text-muted">{{ cantidad }} unidades</small>
+                        </div>
+                        <div class="text-end">
+                            <div class="fw-bold">${{ "%.2f"|format(total_usd) }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                <div class="no-data">
+                    <i class="bi bi-trophy"></i>
+                    <p>Sin datos de ventas</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Top Áreas -->
+        <div class="col-lg-6">
+            <div class="report-card">
+                <h5 class="mb-3">
+                    <i class="bi bi-building text-info me-2"></i>Top Áreas
+                </h5>
+                
+                {% if ventas_por_area %}
+                    {% for area, cantidad, total_usd in ventas_por_area[:5] %}
+                    <div class="ranking-item">
+                        <div class="ranking-number {% if loop.index == 1 %}top1{% elif loop.index == 2 %}top2{% elif loop.index == 3 %}top3{% endif %}">
+                            {{ loop.index }}
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="fw-semibold">{{ area }}</div>
+                            <small class="text-muted">{{ cantidad }} pedidos</small>
+                        </div>
+                        <div class="text-end">
+                            <div class="fw-bold">${{ "%.2f"|format(total_usd) }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                <div class="no-data">
+                    <i class="bi bi-building"></i>
+                    <p>Sin datos</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Gráfico de Distribución de Sabores -->
+    <div class="row g-3 g-md-4 mb-4">
+        <div class="col-12">
+            <div class="report-card">
+                <h5 class="mb-3">
+                    <i class="bi bi-bar-chart text-success me-2"></i>Ventas por Sabor
+                </h5>
+                {% if ventas_por_sabor %}
+                <div class="chart-container-lg">
+                    <canvas id="saboresChart"></canvas>
+                </div>
+                {% else %}
+                <div class="no-data">
+                    <i class="bi bi-bar-chart"></i>
+                    <p>No hay datos para mostrar</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Exportar Reportes -->
+    <div class="row g-3 g-md-4">
+        <div class="col-6 col-md-6">
+            <div class="export-card">
+                <div class="export-icon" style="color: #198754;">
+                    <i class="bi bi-file-earmark-excel"></i>
+                </div>
+                <h5 class="fw-bold">Excel</h5>
+                <p class="text-muted d-none d-md-block">Descarga completa de transacciones</p>
+                <a href="{{ url_for('reporte_excel') }}" class="btn btn-success btn-lg w-100" target="_blank">
+                    <i class="bi bi-download"></i> <span class="d-none d-sm-inline">Descargar</span>
+                </a>
+            </div>
+        </div>
+        
+        <div class="col-6 col-md-6">
+            <div class="export-card">
+                <div class="export-icon" style="color: #DC3545;">
+                    <i class="bi bi-file-earmark-pdf"></i>
+                </div>
+                <h5 class="fw-bold">PDF</h5>
+                <p class="text-muted d-none d-md-block">Resumen general en PDF</p>
+                <a href="{{ url_for('reporte_pdf') }}" class="btn btn-danger btn-lg w-100" target="_blank">
+                    <i class="bi bi-download"></i> <span class="d-none d-sm-inline">Descargar</span>
+                </a>
+            </div>
+        </div>
+    </div>
+    
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // Datos para gráficos desde Jinja2
+    const ventasDiariasLabels = [
+        {% for venta in ventas_diarias %}
+            "{{ venta.fecha }}"{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    const ventasDiariasValues = [
+        {% for venta in ventas_diarias %}
+            {{ venta.total }}{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    const metodosPagoLabels = [
+        {% for metodo, total in ventas_por_metodo.items() %}
+            "{{ metodo }}"{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    const metodosPagoValues = [
+        {% for metodo, total in ventas_por_metodo.items() %}
+            {{ total }}{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    const saboresLabels = [
+        {% for sabor, cantidad, total_usd in ventas_por_sabor %}
+            "{{ sabor.capitalize() }}"{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    const saboresValues = [
+        {% for sabor, cantidad, total_usd in ventas_por_sabor %}
+            {{ cantidad }}{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    // Configuración común
+    const commonOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: true,
+                position: 'top',
+                labels: {
+                    padding: 15,
+                    usePointStyle: true,
+                    font: {
+                        size: 11
+                    }
+                }
+            }
+        }
+    };
+    
+    // Gráfico de Ventas Diarias
+    {% if ventas_diarias %}
+    const ctxVentas = document.getElementById('ventasDiariasChart');
+    if (ctxVentas && ventasDiariasLabels.length > 0) {
+        new Chart(ctxVentas, {
+            type: 'line',
+            data: {
+                labels: ventasDiariasLabels,
+                datasets: [{
+                    label: 'Ventas USD',
+                    data: ventasDiariasValues,
+                    borderColor: '#0D6EFD',
+                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 3,
+                    pointHoverRadius: 5,
+                    pointBackgroundColor: '#0D6EFD',
+                    pointBorderColor: 'white',
+                    pointBorderWidth: 2
+                }]
+            },
+            options: {
+                ...commonOptions,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#E2E8F0' },
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value;
+                            }
+                        }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    }
+    {% endif %}
+    
+    // Gráfico de Métodos de Pago
+    {% if ventas_por_metodo %}
+    const ctxMetodos = document.getElementById('metodosPagoChart');
+    if (ctxMetodos && metodosPagoLabels.length > 0) {
+        new Chart(ctxMetodos, {
+            type: 'doughnut',
+            data: {
+                labels: metodosPagoLabels,
+                datasets: [{
+                    data: metodosPagoValues,
+                    backgroundColor: [
+                        '#0D6EFD', '#198754', '#FFC107', '#DC3545', 
+                        '#8B5CF6', '#0DCAF0', '#F59E0B', '#10B981'
+                    ],
+                    borderWidth: 2,
+                    borderColor: 'white'
+                }]
+            },
+            options: {
+                ...commonOptions,
+                cutout: '55%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 10,
+                            usePointStyle: true,
+                            font: { size: 10 }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    {% endif %}
+    
+    // Gráfico de Sabores
+    {% if ventas_por_sabor %}
+    const ctxSabores = document.getElementById('saboresChart');
+    if (ctxSabores && saboresLabels.length > 0) {
+        new Chart(ctxSabores, {
+            type: 'bar',
+            data: {
+                labels: saboresLabels,
+                datasets: [{
+                    label: 'Unidades Vendidas',
+                    data: saboresValues,
+                    backgroundColor: [
+                        'rgba(13, 110, 253, 0.7)',
+                        'rgba(25, 135, 84, 0.7)',
+                        'rgba(255, 193, 7, 0.7)',
+                        'rgba(220, 53, 69, 0.7)',
+                        'rgba(139, 92, 246, 0.7)',
+                        'rgba(13, 202, 240, 0.7)',
+                        'rgba(245, 158, 11, 0.7)',
+                        'rgba(16, 185, 129, 0.7)'
+                    ],
+                    borderColor: [
+                        '#0D6EFD', '#198754', '#FFC107', '#DC3545',
+                        '#8B5CF6', '#0DCAF0', '#F59E0B', '#10B981'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                ...commonOptions,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#E2E8F0' },
+                        ticks: { stepSize: 1 }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    }
+    {% endif %}
+    
+});
+</script>
+{% endblock %}

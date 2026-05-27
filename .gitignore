@@ -1,0 +1,47 @@
+# Archivos de Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+
+# Entorno virtual
+venv/
+env/
+.venv/
+.env
+
+# Base de datos SQLite
+*.db
+*.sqlite
+*.sqlite3
+
+# Archivos de IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Captures subidos (datos sensibles)
+static/captures/*
+!static/captures/.gitkeep
+
+# Archivos de configuración local
+instance/
+.env
+*.env.local
+
+# Logs
+*.log

@@ -1,0 +1,838 @@
+{% extends "base.html" %}
+
+{% block title %}Historial - Cepillados{% endblock %}
+
+{% block page_title %}Historial de Transacciones{% endblock %}
+{% block breadcrumb %}Historial{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-card {
+        background: var(--bg-card);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .filter-card .form-label {
+        font-weight: 600;
+        color: var(--text-secondary);
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 5px;
+    }
+    
+    .transaction-table th {
+        position: sticky;
+        top: 0;
+        background: var(--bg-table-header);
+        z-index: 10;
+    }
+    
+    .transaction-row {
+        transition: all 0.2s ease;
+    }
+    
+    .transaction-row:active {
+        background: var(--bg-table-hover);
+    }
+    
+    .pagination .page-link {
+        border-radius: 8px;
+        margin: 0 3px;
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        background: var(--bg-card);
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    .pagination .page-link:hover {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+    
+    .pagination .page-item.active .page-link {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: white;
+    }
+    
+    .pagination .page-item.disabled .page-link {
+        background: var(--bg-badge-light);
+        color: var(--text-muted);
+    }
+    
+    .empty-state {
+        padding: 60px 20px;
+        text-align: center;
+    }
+    
+    .empty-state i {
+        font-size: 4rem;
+        color: #CBD5E1;
+        margin-bottom: 20px;
+    }
+    
+    .info-group {
+        margin-bottom: 20px;
+        padding: 15px;
+        background: var(--bg-badge-light);
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+    }
+    
+    .info-group .info-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-secondary);
+        font-weight: 600;
+        margin-bottom: 5px;
+    }
+    
+    .info-group .info-value {
+        font-size: 1rem;
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+    
+    .badge-pill-status {
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    
+    .quick-stats {
+        background: var(--bg-card);
+        border-radius: 12px;
+        padding: 15px 20px;
+        margin-bottom: 20px;
+        border: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-around;
+        flex-wrap: wrap;
+        gap: 15px;
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .quick-stat-item {
+        text-align: center;
+        flex: 1;
+        min-width: 80px;
+    }
+    
+    .quick-stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+    
+    .quick-stat-label {
+        font-size: 0.7rem;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    /* Imagen miniatura en tabla */
+    .sabor-thumb {
+        width: 30px;
+        height: 30px;
+        border-radius: 6px;
+        object-fit: cover;
+        flex-shrink: 0;
+    }
+    
+    .sabor-emoji-small {
+        font-size: 1.2rem;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    
+    /* ========== MÓVIL ========== */
+    @media (max-width: 767.98px) {
+        .filter-card {
+            padding: 15px;
+        }
+        
+        .filter-card .row {
+            --bs-gutter-y: 0.5rem;
+        }
+        
+        .quick-stats {
+            padding: 10px;
+            gap: 10px;
+        }
+        
+        .quick-stat-value {
+            font-size: 1.2rem;
+        }
+        
+        .quick-stat-label {
+            font-size: 0.65rem;
+        }
+        
+        .transaction-table {
+            font-size: 0.75rem;
+        }
+        
+        .transaction-table thead th {
+            padding: 8px 10px;
+            font-size: 0.65rem;
+        }
+        
+        .transaction-table tbody td {
+            padding: 8px 10px;
+        }
+        
+        .badge-pill-status {
+            padding: 4px 10px;
+            font-size: 0.7rem;
+        }
+        
+        .btn-group .btn {
+            padding: 5px 8px;
+            font-size: 0.7rem;
+        }
+        
+        .modal-dialog {
+            margin: 10px;
+            max-width: calc(100% - 20px);
+        }
+        
+        .modal-body {
+            padding: 15px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+        
+        .info-group {
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .empty-state {
+            padding: 30px 10px;
+        }
+        
+        .empty-state i {
+            font-size: 2.5rem;
+        }
+        
+        .sabor-thumb {
+            width: 25px;
+            height: 25px;
+        }
+    }
+    
+    @media (max-width: 575.98px) {
+        .quick-stats {
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .quick-stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+        
+        .quick-stat-item:last-child {
+            border-bottom: none;
+        }
+        
+        .filter-card .col-xl-2,
+        .filter-card .col-md-4,
+        .filter-card .col-6 {
+            width: 100%;
+        }
+    }
+    
+    @media print {
+        .filter-card, .pagination, .btn, .no-print {
+            display: none !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    
+    <!-- Estadísticas Rápidas -->
+    <div class="quick-stats">
+        <div class="quick-stat-item">
+            <div class="quick-stat-value" id="totalRegistros">{{ pedidos.total }}</div>
+            <div class="quick-stat-label">Registros</div>
+        </div>
+        <div class="quick-stat-item">
+            <div class="quick-stat-value text-success" id="totalPagados">-</div>
+            <div class="quick-stat-label">Pagados</div>
+        </div>
+        <div class="quick-stat-item">
+            <div class="quick-stat-value text-danger" id="totalPendientes">-</div>
+            <div class="quick-stat-label">Pendientes</div>
+        </div>
+        <div class="quick-stat-item">
+            <div class="quick-stat-value text-primary" id="totalUSD">-</div>
+            <div class="quick-stat-label">Total USD</div>
+        </div>
+        <div class="quick-stat-item">
+            <div class="quick-stat-value text-info" id="promedioDiario">-</div>
+            <div class="quick-stat-label">Promedio</div>
+        </div>
+    </div>
+    
+    <!-- Filtros -->
+    <div class="filter-card no-print">
+        <form method="GET" action="{{ url_for('historial') }}" class="row g-3 align-items-end">
+            <div class="col-xl-2 col-md-4 col-6">
+                <label class="form-label">Pago</label>
+                <select name="pago" class="form-select form-select-sm">
+                    <option value="todos" {% if filtro_pago == 'todos' %}selected{% endif %}>Todos</option>
+                    <option value="si" {% if filtro_pago == 'si' %}selected{% endif %}>Pagados</option>
+                    <option value="no" {% if filtro_pago == 'no' %}selected{% endif %}>Pendientes</option>
+                </select>
+            </div>
+            
+            <div class="col-xl-2 col-md-4 col-6">
+                <label class="form-label">Área</label>
+                <select name="area" class="form-select form-select-sm">
+                    <option value="todos" {% if filtro_area == 'todos' %}selected{% endif %}>Todas</option>
+                    {% for area in areas %}
+                    <option value="{{ area.id }}" {% if filtro_area == area.id|string %}selected{% endif %}>
+                        {{ area.nombre }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="col-xl-2 col-md-4 col-6">
+                <label class="form-label">Sabor</label>
+                <select name="sabor" class="form-select form-select-sm">
+                    <option value="todos" {% if filtro_sabor == 'todos' %}selected{% endif %}>Todos</option>
+                    {% for sabor in sabores %}
+                    <option value="{{ sabor.id }}" {% if filtro_sabor == sabor.id|string %}selected{% endif %}>
+                        {{ sabor.nombre.capitalize() }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="col-xl-2 col-md-4 col-6">
+                <label class="form-label">Desde</label>
+                <input type="date" name="fecha_desde" class="form-control form-control-sm" value="{{ fecha_desde }}">
+            </div>
+            
+            <div class="col-xl-2 col-md-4 col-6">
+                <label class="form-label">Hasta</label>
+                <input type="date" name="fecha_hasta" class="form-control form-control-sm" value="{{ fecha_hasta }}">
+            </div>
+            
+            <div class="col-xl-2 col-md-4 col-6 d-flex gap-1">
+                <button type="submit" class="btn btn-primary btn-sm flex-grow-1">
+                    <i class="bi bi-search"></i> <span class="d-none d-md-inline">Filtrar</span>
+                </button>
+                <a href="{{ url_for('historial') }}" class="btn btn-outline-secondary btn-sm" title="Limpiar">
+                    <i class="bi bi-x-circle"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Tabla de Transacciones -->
+    <div class="table-card">
+        <div class="table-header">
+            <h5><i class="bi bi-list-ul me-2"></i>Transacciones</h5>
+            <div class="d-flex gap-2 align-items-center">
+                <span class="badge bg-primary">{{ pedidos.total }} resultados</span>
+                <div class="d-none d-md-flex gap-1">
+                    <a href="{{ url_for('reporte_excel') }}" class="btn btn-sm btn-success" target="_blank" title="Excel">
+                        <i class="bi bi-file-earmark-excel"></i>
+                    </a>
+                    <a href="{{ url_for('reporte_pdf') }}" class="btn btn-sm btn-danger" target="_blank" title="PDF">
+                        <i class="bi bi-file-earmark-pdf"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
+            <table class="table table-hover transaction-table mb-0">
+                <thead>
+                    <tr>
+                        <th style="min-width: 70px;">Fecha</th>
+                        <th style="min-width: 100px;">Cliente</th>
+                        <th style="min-width: 80px;">Área</th>
+                        <th style="min-width: 100px;">Sabor</th>
+                        <th style="min-width: 50px;">Cant.</th>
+                        <th style="min-width: 70px;">Total USD</th>
+                        <th style="min-width: 70px;">Total Bs</th>
+                        <th style="min-width: 70px;">Pago</th>
+                        <th style="min-width: 50px;">Entr.</th>
+                        <th style="min-width: 120px;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in pedidos.items %}
+                    <tr class="transaction-row" onclick="openDetailModal('detailModal{{ p.id }}')" style="cursor: pointer;">
+                        <td>
+                            <small>{{ p.fecha_registro.strftime('%d/%m/%Y') }}</small>
+                            <br>
+                            <small class="text-muted">{{ p.fecha_registro.strftime('%H:%M') }}</small>
+                        </td>
+                        <td>
+                            <div class="fw-semibold">{{ p.nombre }}</div>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark">{{ p.area.nombre }}</span>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                {% if p.sabor.imagen %}
+                                <img src="{{ url_for('static', filename='img/sabores/' + p.sabor.imagen) }}" 
+                                     alt="{{ p.sabor.nombre }}" 
+                                     class="sabor-thumb d-none d-md-inline">
+                                {% else %}
+                                <span class="sabor-emoji-small d-none d-md-inline">🍧</span>
+                                {% endif %}
+                                <span>{{ p.sabor.nombre.capitalize() }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">x{{ p.cantidad }}</span>
+                        </td>
+                        <td class="fw-bold">${{ "%.2f"|format(p.cantidad * p.sabor.precio_usd) }}</td>
+                        <td>
+                            <small>Bs. {{ "%.2f"|format((p.cantidad * p.sabor.precio_usd) * tasa_bcv) }}</small>
+                            {% if p.monto_pagado_bs %}
+                                <br><small class="text-success">Pagó: Bs.{{ "%.2f"|format(p.monto_pagado_bs) }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if p.pago == 'si' %}
+                                <span class="badge badge-pill-status badge-pagado">
+                                    <i class="bi bi-check-circle"></i> Pagado
+                                </span>
+                                {% if p.metodo_pago_rel %}
+                                    <br><small class="text-muted">{{ p.metodo_pago_rel.nombre }}</small>
+                                {% endif %}
+                            {% else %}
+                                <span class="badge badge-pill-status badge-pendiente">
+                                    <i class="bi bi-clock"></i> Pendiente
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if p.entrega == 'si' %}
+                                <span class="text-success"><i class="bi bi-check-circle-fill"></i></span>
+                            {% else %}
+                                <span class="text-muted"><i class="bi bi-circle"></i></span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="d-flex gap-1 no-print">
+                                <button type="button" class="btn btn-sm btn-outline-warning btn-action" 
+                                        onclick="event.stopPropagation(); openEditModal('editModal{{ p.id }}')"
+                                        title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <a href="{{ url_for('generar_factura', pedido_id=p.id) }}" 
+                                   class="btn btn-sm btn-outline-info btn-action" 
+                                   target="_blank"
+                                   onclick="event.stopPropagation();"
+                                   title="Factura">
+                                    <i class="bi bi-file-pdf"></i>
+                                </a>
+                                {% if p.capture_img %}
+                                <a href="{{ url_for('static', filename='captures/' + p.capture_img) }}" 
+                                   class="btn btn-sm btn-outline-secondary btn-action" 
+                                   target="_blank"
+                                   onclick="event.stopPropagation();"
+                                   title="Ver comprobante">
+                                    <i class="bi bi-image"></i>
+                                </a>
+                                {% endif %}
+                                <form action="{{ url_for('eliminar_pedido', pedido_id=p.id) }}" method="POST" 
+                                      style="display:inline;"
+                                      onsubmit="event.stopPropagation(); return confirm('¿Eliminar este pedido? Se restaurará el stock.')">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger btn-action" title="Eliminar">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <!-- Modal Detalle Rápido -->
+                    <div class="modal fade" id="detailModal{{ p.id }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header bg-primary text-white">
+                                    <h5 class="modal-title fw-bold">
+                                        <i class="bi bi-info-circle"></i> Detalle del Pedido #{{ p.id }}
+                                    </h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="info-group">
+                                                <div class="info-label">Cliente</div>
+                                                <div class="info-value">{{ p.nombre }}</div>
+                                                <small class="text-muted">{{ p.area.nombre }}</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="info-group">
+                                                <div class="info-label">Fecha y Hora</div>
+                                                <div class="info-value">{{ p.fecha_registro.strftime('%d/%m/%Y') }}</div>
+                                                <small class="text-muted">{{ p.fecha_registro.strftime('%I:%M %p') }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="info-group">
+                                                <div class="info-label">Producto</div>
+                                                <div class="d-flex align-items-center gap-2 mb-2">
+                                                    {% if p.sabor.imagen %}
+                                                    <img src="{{ url_for('static', filename='img/sabores/' + p.sabor.imagen) }}" 
+                                                         alt="{{ p.sabor.nombre }}" 
+                                                         style="width: 50px; height: 50px; object-fit: cover; border-radius: 10px;">
+                                                    {% else %}
+                                                    <span style="font-size: 2rem;">🍧</span>
+                                                    {% endif %}
+                                                    <div class="info-value">{{ p.sabor.nombre.capitalize() }}</div>
+                                                </div>
+                                                <small class="text-muted">Cantidad: {{ p.cantidad }} unidad(es)</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="info-group">
+                                                <div class="info-label">Total USD</div>
+                                                <div class="info-value text-primary">${{ "%.2f"|format(p.cantidad * p.sabor.precio_usd) }}</div>
+                                                <small class="text-muted">P.U: ${{ "%.2f"|format(p.sabor.precio_usd) }}</small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="info-group">
+                                                <div class="info-label">Equivalente Bs</div>
+                                                <div class="info-value">Bs. {{ "%.2f"|format((p.cantidad * p.sabor.precio_usd) * tasa_bcv) }}</div>
+                                                <small class="text-muted">Tasa: Bs. {{ "%.2f"|format(tasa_bcv) }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="info-group">
+                                                <div class="info-label">Estado de Pago</div>
+                                                {% if p.pago == 'si' %}
+                                                    <div class="info-value text-success">
+                                                        <i class="bi bi-check-circle-fill"></i> Pagado
+                                                    </div>
+                                                    {% if p.metodo_pago_rel %}
+                                                        <small class="text-muted">Método: {{ p.metodo_pago_rel.nombre }}</small>
+                                                    {% endif %}
+                                                    {% if p.monto_pagado_bs %}
+                                                        <br><small class="text-success">Recibido: Bs. {{ "%.2f"|format(p.monto_pagado_bs) }}</small>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <div class="info-value text-danger">
+                                                        <i class="bi bi-clock"></i> Pendiente
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="info-group">
+                                                <div class="info-label">Estado de Entrega</div>
+                                                {% if p.entrega == 'si' %}
+                                                    <div class="info-value text-success">
+                                                        <i class="bi bi-box-seam"></i> Entregado
+                                                    </div>
+                                                {% else %}
+                                                    <div class="info-value text-warning">
+                                                        <i class="bi bi-hourglass-split"></i> Por entregar
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    {% if p.capture_img %}
+                                    <div class="info-group">
+                                        <div class="info-label">Comprobante de Pago</div>
+                                        <img src="{{ url_for('static', filename='captures/' + p.capture_img) }}" 
+                                             class="img-fluid rounded mt-2" 
+                                             style="max-height: 250px; width: auto;"
+                                             alt="Comprobante">
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="modal-footer">
+                                    <a href="{{ url_for('generar_factura', pedido_id=p.id) }}" 
+                                       class="btn btn-danger btn-sm" target="_blank">
+                                        <i class="bi bi-file-pdf"></i> Factura
+                                    </a>
+                                    <button type="button" class="btn btn-warning btn-sm" 
+                                            onclick="openEditModal('editModal{{ p.id }}')"
+                                            data-bs-dismiss="modal">
+                                        <i class="bi bi-pencil"></i> Editar
+                                    </button>
+                                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Modal Editar -->
+                    <div class="modal fade" id="editModal{{ p.id }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header bg-warning">
+                                    <h5 class="modal-title fw-bold">
+                                        <i class="bi bi-pencil-square"></i> Editar Pedido #{{ p.id }}
+                                    </h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <form action="{{ url_for('editar_pedido', pedido_id=p.id) }}" method="POST" enctype="multipart/form-data">
+                                    <div class="modal-body">
+                                        <div class="mb-3 p-3 bg-light rounded">
+                                            <div class="d-flex align-items-center gap-2 mb-2">
+                                                {% if p.sabor.imagen %}
+                                                <img src="{{ url_for('static', filename='img/sabores/' + p.sabor.imagen) }}" 
+                                                     alt="{{ p.sabor.nombre }}" 
+                                                     style="width: 45px; height: 45px; object-fit: cover; border-radius: 10px;">
+                                                {% else %}
+                                                <span style="font-size: 1.8rem;">🍧</span>
+                                                {% endif %}
+                                                <div>
+                                                    <strong>{{ p.nombre }}</strong> - {{ p.area.nombre }}<br>
+                                                    <small>{{ p.sabor.nombre.capitalize() }} x{{ p.cantidad }} = ${{ "%.2f"|format(p.cantidad * p.sabor.precio_usd) }}</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">Estado de Pago</label>
+                                            <select name="pago" class="form-select">
+                                                <option value="si" {% if p.pago == 'si' %}selected{% endif %}>Pagado</option>
+                                                <option value="no" {% if p.pago == 'no' %}selected{% endif %}>Pendiente</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">Método de Pago</label>
+                                            <select name="metodo_pago_id" class="form-select">
+                                                <option value="">Seleccionar...</option>
+                                                {% for metodo in metodos_pago %}
+                                                    {% if metodo.activo %}
+                                                    <option value="{{ metodo.id }}" {% if p.metodo_pago_id == metodo.id %}selected{% endif %}>
+                                                        {{ metodo.nombre }}
+                                                    </option>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">Estado de Entrega</label>
+                                            <select name="entrega" class="form-select">
+                                                <option value="si" {% if p.entrega == 'si' %}selected{% endif %}>Entregado</option>
+                                                <option value="no" {% if p.entrega == 'no' %}selected{% endif %}>Por entregar</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label fw-bold">Actualizar Comprobante</label>
+                                            <input type="file" name="capture" class="form-control" accept="image/*">
+                                            {% if p.capture_img %}
+                                                <div class="form-check mt-2 p-2 bg-danger bg-opacity-10 rounded">
+                                                    <input class="form-check-input" type="checkbox" name="borrar_capture" value="si" id="borrarCapture{{ p.id }}">
+                                                    <label class="form-check-label text-danger small" for="borrarCapture{{ p.id }}">
+                                                        <i class="bi bi-trash"></i> Eliminar comprobante actual
+                                                    </label>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                                        <button type="submit" class="btn btn-success btn-sm">
+                                            <i class="bi bi-check-lg"></i> Guardar
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <tr>
+                        <td colspan="10">
+                            <div class="empty-state">
+                                <i class="bi bi-inbox"></i>
+                                <h5>No se encontraron registros</h5>
+                                <p class="text-muted">
+                                    {% if filtro_pago != 'todos' or filtro_area != 'todos' or filtro_sabor != 'todos' or fecha_desde or fecha_hasta %}
+                                        No hay resultados con los filtros aplicados.
+                                        <br><a href="{{ url_for('historial') }}" class="btn btn-sm btn-outline-primary mt-2">Limpiar filtros</a>
+                                    {% else %}
+                                        Aún no hay pedidos registrados en el sistema
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Paginación -->
+        {% if pedidos.pages > 1 %}
+        <div class="p-3 border-top no-print">
+            <nav aria-label="Navegación">
+                <ul class="pagination justify-content-center mb-0 flex-wrap">
+                    {% if pedidos.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('historial', page=pedidos.prev_num, pago=filtro_pago, area=filtro_area, sabor=filtro_sabor, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta) }}">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="bi bi-chevron-left"></i></span>
+                    </li>
+                    {% endif %}
+                    
+                    {% for page_num in pedidos.iter_pages(left_edge=1, left_current=2, right_current=2, right_edge=1) %}
+                        {% if page_num %}
+                            <li class="page-item {% if page_num == pedidos.page %}active{% endif %}">
+                                <a class="page-link" href="{{ url_for('historial', page=page_num, pago=filtro_pago, area=filtro_area, sabor=filtro_sabor, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta) }}">
+                                    {{ page_num }}
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if pedidos.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('historial', page=pedidos.next_num, pago=filtro_pago, area=filtro_area, sabor=filtro_sabor, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta) }}">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="bi bi-chevron-right"></i></span>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            <div class="text-center mt-2">
+                <small class="text-muted">
+                    Mostrando {{ (pedidos.page - 1) * pedidos.per_page + 1 }} - {{ [pedidos.page * pedidos.per_page, pedidos.total]|min }} de {{ pedidos.total }} registros
+                </small>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Función para abrir modal de detalle
+function openDetailModal(modalId) {
+    if (event.target.closest('button, a, form, .btn, .btn-action, .btn-group')) {
+        return;
+    }
+    const modalElement = document.getElementById(modalId);
+    if (modalElement) {
+        const modal = new bootstrap.Modal(modalElement, {
+            backdrop: true,
+            keyboard: true,
+            focus: true
+        });
+        modal.show();
+    }
+}
+
+// Función para abrir modal de edición
+function openEditModal(modalId) {
+    const modalElement = document.getElementById(modalId);
+    if (modalElement) {
+        const modal = new bootstrap.Modal(modalElement, {
+            backdrop: true,
+            keyboard: true,
+            focus: true
+        });
+        modal.show();
+    }
+}
+
+// Calcular estadísticas rápidas
+document.addEventListener('DOMContentLoaded', function() {
+    const rows = document.querySelectorAll('.transaction-row');
+    let totalPagados = 0;
+    let totalPendientes = 0;
+    let totalUSD = 0;
+    
+    rows.forEach(row => {
+        const pagoCell = row.querySelector('td:nth-child(8)');
+        const usdCell = row.querySelector('td:nth-child(6)');
+        
+        if (pagoCell) {
+            if (pagoCell.textContent.includes('Pagado')) {
+                totalPagados++;
+            } else if (pagoCell.textContent.includes('Pendiente')) {
+                totalPendientes++;
+            }
+        }
+        
+        if (usdCell) {
+            const usdText = usdCell.textContent.replace('$', '').trim();
+            totalUSD += parseFloat(usdText) || 0;
+        }
+    });
+    
+    document.getElementById('totalPagados').textContent = totalPagados;
+    document.getElementById('totalPendientes').textContent = totalPendientes;
+    document.getElementById('totalUSD').textContent = '$' + totalUSD.toFixed(2);
+    
+    const promedioDiario = rows.length > 0 ? (totalUSD / 30).toFixed(2) : '0.00';
+    document.getElementById('promedioDiario').textContent = '$' + promedioDiario;
+    
+    // Mejorar interacción táctil
+    if ('ontouchstart' in window) {
+        document.querySelectorAll('.btn, .btn-action').forEach(btn => {
+            btn.addEventListener('touchstart', function() {
+                this.style.opacity = '0.7';
+            });
+            btn.addEventListener('touchend', function() {
+                this.style.opacity = '1';
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

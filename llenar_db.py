@@ -1,6 +1,6 @@
 import random
 from datetime import datetime, timedelta
-from app import app, db, Sabor, Area, Pedido, MetodoPago
+from app import app, db, Sabor, Area, Pedido, MetodoPago, generar_numero_factura
 
 # Datos simulados para llenar la base de datos
 NOMBRES = [
@@ -92,9 +92,9 @@ def generar_monto_bs(monto_usd, metodo_codigo):
 
 def llenar_base_datos():
     with app.app_context():
-        print("=" * 60)
-        print("🍧 SEMILLERO DE BASE DE DATOS - CEPILLADOS")
-        print("=" * 60)
+        print("=" * 70)
+        print("🍧 SEMILLERO DE BASE DE DATOS - CEPILLADOS v1.1")
+        print("=" * 70)
         
         print("\n🗑️  Limpiando base de datos anterior...")
         db.drop_all()
@@ -124,7 +124,7 @@ def llenar_base_datos():
                 iconos.append("📸")
             if metodo_data['requiere_monto_bs']:
                 iconos.append("💰")
-            print(f"   ✅ {metodo_data['nombre']} ({metodo_data['codigo']}) - {estado} {' '.join(iconos)}")
+            print(f"   ✅ {metodo_data['nombre']:25} | {metodo_data['codigo']:15} | {estado} {' '.join(iconos)}")
         db.session.commit()
 
         # ==================== CREAR SABORES ====================
@@ -136,15 +136,15 @@ def llenar_base_datos():
                 stock_inicial=sabor_data['stock'],
                 stock_disponible=sabor_data['stock'],
                 precio_usd=sabor_data['precio'],
-                imagen=None  # Sin imagen por defecto (se pueden agregar después)
+                imagen=None  # Sin imagen por defecto
             )
             db.session.add(nuevo_sabor)
             sabores_creados.append(nuevo_sabor)
             print(f"   ✅ {sabor_data['emoji']} {sabor_data['nombre'].capitalize():15} | Stock: {sabor_data['stock']:3d} | Precio: ${sabor_data['precio']:.2f}")
         db.session.commit()
 
-        # ==================== CREAR PEDIDOS ====================
-        print("\n📝 Generando 60 pedidos aleatorios...")
+        # ==================== CREAR PEDIDOS CON FACTURAS ====================
+        print("\n📝 Generando 60 pedidos con números de factura secuenciales...")
         pedidos_creados = 0
         fecha_base = datetime.now() - timedelta(days=7)
         
@@ -152,11 +152,14 @@ def llenar_base_datos():
         estados_pago = ["si", "si", "si", "no"]  # 75% pagado, 25% pendiente
         estados_entrega = ["si", "si", "no"]     # 66% entregado, 33% pendiente
         
+        # Contador de facturas generadas
+        facturas_generadas = []
+        
         for i in range(60):
             nombre = random.choice(NOMBRES)
             area = random.choice(areas_creadas)
             sabor = random.choice(sabores_creados)
-            cantidad = random.choices([1, 2, 3, 4], weights=[40, 35, 20, 5])[0]  # Mayor probabilidad de 1-2
+            cantidad = random.choices([1, 2, 3, 4], weights=[40, 35, 20, 5])[0]
             pago = random.choice(estados_pago)
             entrega = random.choice(estados_entrega)
             
@@ -199,7 +202,12 @@ def llenar_base_datos():
             if sabor.stock_disponible >= cantidad:
                 sabor.stock_disponible -= cantidad
                 
+                # Generar número de factura usando la función del sistema
+                numero_factura = generar_numero_factura()
+                facturas_generadas.append(numero_factura)
+                
                 nuevo_pedido = Pedido(
+                    numero_factura=numero_factura,  # ✅ Número de factura secuencial
                     nombre=nombre,
                     area_id=area.id,
                     sabor_id=sabor.id,
@@ -215,23 +223,32 @@ def llenar_base_datos():
                 db.session.add(nuevo_pedido)
                 pedidos_creados += 1
                 
-                # Mostrar progreso
+                # Mostrar progreso con número de factura
                 estado_pago_str = "✅ PAGADO" if pago == "si" else "❌ PENDIENTE"
                 metodo_str = metodo_pago_codigo.replace('_', ' ').title() if pago == "si" else "N/A"
-                print(f"   #{pedidos_creados:2d} | {nombre:20s} | {sabor.nombre.capitalize():12s} x{cantidad} | "
-                      f"${cantidad * sabor.precio_usd:.2f} | {estado_pago_str} | {metodo_str} | "
+                print(f"   #{pedidos_creados:2d} | {numero_factura:15s} | {nombre:20s} | "
+                      f"{sabor.nombre.capitalize():12s} x{cantidad} | "
+                      f"${cantidad * sabor.precio_usd:.2f} | {estado_pago_str} | "
                       f"{fecha_pedido.strftime('%d/%m %H:%M')}")
 
         db.session.commit()
 
         # ==================== RESUMEN FINAL ====================
-        print("\n" + "=" * 60)
+        print("\n" + "=" * 70)
         print("📊 RESUMEN DE LA BASE DE DATOS GENERADA")
-        print("=" * 60)
-        print(f"   🏢 Áreas creadas:        {len(areas_creadas)}")
-        print(f"   💳 Métodos de pago:      {len(metodos_creados)} ({sum(1 for m in metodos_creados if m.activo)} activos)")
-        print(f"   🍧 Sabores disponibles:   {len(sabores_creados)}")
-        print(f"   📝 Pedidos generados:     {pedidos_creados}")
+        print("=" * 70)
+        print(f"   🏢 Áreas creadas:          {len(areas_creadas)}")
+        print(f"   💳 Métodos de pago:        {len(metodos_creados)} ({sum(1 for m in metodos_creados if m.activo)} activos)")
+        print(f"   🍧 Sabores disponibles:     {len(sabores_creados)}")
+        print(f"   📝 Pedidos generados:       {pedidos_creados}")
+        print(f"   🧾 Facturas generadas:      {len(facturas_generadas)}")
+        
+        # Mostrar rango de facturas
+        if facturas_generadas:
+            print(f"\n🧾 Rango de facturas generadas:")
+            print(f"   Primera factura: {facturas_generadas[0]}")
+            print(f"   Última factura:  {facturas_generadas[-1]}")
+            print(f"   Total facturas:  {len(set(facturas_generadas))} (sin duplicados)")
         
         # Estadísticas de stock
         print(f"\n📈 Stock final de sabores:")
@@ -247,22 +264,43 @@ def llenar_base_datos():
         total_pendientes = Pedido.query.filter_by(pago='no').count()
         
         print(f"\n💰 Resumen financiero:")
-        print(f"   Total facturado (USD):  ${total_usd:.2f}")
-        print(f"   Pedidos pagados:        {total_pagados} ({total_pagados/pedidos_creados*100:.0f}%)")
-        print(f"   Pedidos pendientes:     {total_pendientes} ({total_pendientes/pedidos_creados*100:.0f}%)")
+        print(f"   Total facturado (USD):    ${total_usd:.2f}")
+        print(f"   Total facturado (Bs):     Bs. {total_usd * TASA_BCV_SIMULADA:.2f}")
+        print(f"   Pedidos pagados:          {total_pagados} ({total_pagados/pedidos_creados*100:.0f}%)")
+        print(f"   Pedidos pendientes:       {total_pendientes} ({total_pendientes/pedidos_creados*100:.0f}%)")
         
         # Pedidos por método de pago
         print(f"\n💳 Pedidos por método de pago:")
         for metodo in metodos_creados:
             count = Pedido.query.filter_by(metodo_pago_codigo=metodo.codigo, pago='si').count()
             if count > 0:
-                print(f"   {metodo.nombre:25} | {count} pedidos")
+                total_metodo = sum(
+                    p.cantidad * p.sabor.precio_usd 
+                    for p in Pedido.query.filter_by(metodo_pago_codigo=metodo.codigo, pago='si').all() 
+                    if p.sabor
+                )
+                print(f"   {metodo.nombre:25} | {count:2d} pedidos | ${total_metodo:.2f}")
         
-        print("\n" + "=" * 60)
+        # Verificar secuencia de facturas
+        print(f"\n🔍 Verificación de facturas:")
+        facturas_ordenadas = sorted(facturas_generadas)
+        secuencia_correcta = True
+        for i in range(1, len(facturas_ordenadas)):
+            num_anterior = int(facturas_ordenadas[i-1].split('-')[-1])
+            num_actual = int(facturas_ordenadas[i].split('-')[-1])
+            if num_actual != num_anterior + 1:
+                print(f"   ⚠️  Salto en secuencia: {facturas_ordenadas[i-1]} → {facturas_ordenadas[i]}")
+                secuencia_correcta = False
+        
+        if secuencia_correcta:
+            print(f"   ✅ Secuencia de facturas correcta (incremento de 1 en 1)")
+        
+        print("\n" + "=" * 70)
         print("✅ ¡Base de datos poblada con éxito!")
         print("🚀 Ejecuta: python app.py")
         print("🌐 Abre: http://localhost:5000")
-        print("=" * 60 + "\n")
+        print("💡 Prueba buscar facturas en: Historial > Buscar Factura")
+        print("=" * 70 + "\n")
 
 if __name__ == '__main__':
     llenar_base_datos()

@@ -445,13 +445,16 @@ def inventario():
 
 @app.route('/historial')
 def historial():
+    """Página de historial completo de transacciones"""
     page = request.args.get('page', 1, type=int)
     config = obtener_config()
     per_page = config['app']['registros_por_pagina']
     
+    # Filtros
     filtro_pago = request.args.get('pago', 'todos')
     filtro_area = request.args.get('area', 'todos')
     filtro_sabor = request.args.get('sabor', 'todos')
+    filtro_factura = request.args.get('factura', '').strip()  # NUEVO
     fecha_desde = request.args.get('fecha_desde', '')
     fecha_hasta = request.args.get('fecha_hasta', '')
     
@@ -463,6 +466,8 @@ def historial():
         query = query.filter_by(area_id=int(filtro_area))
     if filtro_sabor != 'todos':
         query = query.filter_by(sabor_id=int(filtro_sabor))
+    if filtro_factura:  # NUEVO
+        query = query.filter(Pedido.numero_factura.contains(filtro_factura))
     if fecha_desde:
         query = query.filter(Pedido.fecha_registro >= datetime.strptime(fecha_desde, '%Y-%m-%d'))
     if fecha_hasta:
@@ -482,6 +487,7 @@ def historial():
         filtro_pago=filtro_pago,
         filtro_area=filtro_area,
         filtro_sabor=filtro_sabor,
+        filtro_factura=filtro_factura,  # NUEVO
         fecha_desde=fecha_desde,
         fecha_hasta=fecha_hasta
     )

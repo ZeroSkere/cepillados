@@ -40,6 +40,18 @@
         background: var(--bg-table-hover);
     }
     
+    .factura-badge {
+        background: rgba(13, 110, 253, 0.1);
+        color: #0D6EFD;
+        padding: 3px 8px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        white-space: nowrap;
+        display: inline-block;
+        font-family: 'Courier New', monospace;
+    }
+    
     .pagination .page-link {
         border-radius: 8px;
         margin: 0 3px;
@@ -141,7 +153,6 @@
         letter-spacing: 0.5px;
     }
     
-    /* Imagen miniatura en tabla */
     .sabor-thumb {
         width: 30px;
         height: 30px;
@@ -158,6 +169,24 @@
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
+    }
+    
+    /* Buscador de factura */
+    .search-factura {
+        position: relative;
+    }
+    
+    .search-factura .search-icon {
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        font-size: 0.9rem;
+    }
+    
+    .search-factura input {
+        padding-left: 32px;
     }
     
     /* ========== MÓVIL ========== */
@@ -199,6 +228,11 @@
         .badge-pill-status {
             padding: 4px 10px;
             font-size: 0.7rem;
+        }
+        
+        .factura-badge {
+            font-size: 0.65rem;
+            padding: 2px 6px;
         }
         
         .btn-group .btn {
@@ -299,6 +333,16 @@
     <!-- Filtros -->
     <div class="filter-card no-print">
         <form method="GET" action="{{ url_for('historial') }}" class="row g-3 align-items-end">
+            <!-- Buscador de Factura -->
+            <div class="col-xl-3 col-md-6 col-12">
+                <label class="form-label">🔍 Buscar Factura</label>
+                <div class="search-factura">
+                    <i class="bi bi-search search-icon"></i>
+                    <input type="text" name="factura" class="form-control form-control-sm" 
+                           placeholder="Ej: FACT-2026-0042" value="{{ filtro_factura }}">
+                </div>
+            </div>
+            
             <div class="col-xl-2 col-md-4 col-6">
                 <label class="form-label">Pago</label>
                 <select name="pago" class="form-select form-select-sm">
@@ -332,19 +376,19 @@
                 </select>
             </div>
             
-            <div class="col-xl-2 col-md-4 col-6">
+            <div class="col-xl-1 col-md-2 col-6">
                 <label class="form-label">Desde</label>
                 <input type="date" name="fecha_desde" class="form-control form-control-sm" value="{{ fecha_desde }}">
             </div>
             
-            <div class="col-xl-2 col-md-4 col-6">
+            <div class="col-xl-1 col-md-2 col-6">
                 <label class="form-label">Hasta</label>
                 <input type="date" name="fecha_hasta" class="form-control form-control-sm" value="{{ fecha_hasta }}">
             </div>
             
-            <div class="col-xl-2 col-md-4 col-6 d-flex gap-1">
+            <div class="col-xl-1 col-md-2 col-6 d-flex gap-1">
                 <button type="submit" class="btn btn-primary btn-sm flex-grow-1">
-                    <i class="bi bi-search"></i> <span class="d-none d-md-inline">Filtrar</span>
+                    <i class="bi bi-search"></i> <span class="d-none d-xl-inline">Filtrar</span>
                 </button>
                 <a href="{{ url_for('historial') }}" class="btn btn-outline-secondary btn-sm" title="Limpiar">
                     <i class="bi bi-x-circle"></i>
@@ -373,6 +417,7 @@
             <table class="table table-hover transaction-table mb-0">
                 <thead>
                     <tr>
+                        <th style="min-width: 100px;">Factura</th>
                         <th style="min-width: 70px;">Fecha</th>
                         <th style="min-width: 100px;">Cliente</th>
                         <th style="min-width: 80px;">Área</th>
@@ -388,6 +433,14 @@
                 <tbody>
                     {% for p in pedidos.items %}
                     <tr class="transaction-row" onclick="openDetailModal('detailModal{{ p.id }}')" style="cursor: pointer;">
+                        <!-- Número de Factura -->
+                        <td>
+                            {% if p.numero_factura %}
+                            <span class="factura-badge">{{ p.numero_factura }}</span>
+                            {% else %}
+                            <span class="text-muted small">-</span>
+                            {% endif %}
+                        </td>
                         <td>
                             <small>{{ p.fecha_registro.strftime('%d/%m/%Y') }}</small>
                             <br>
@@ -453,7 +506,7 @@
                                    class="btn btn-sm btn-outline-info btn-action" 
                                    target="_blank"
                                    onclick="event.stopPropagation();"
-                                   title="Factura">
+                                   title="Factura PDF">
                                     <i class="bi bi-file-pdf"></i>
                                 </a>
                                 {% if p.capture_img %}
@@ -482,11 +535,24 @@
                             <div class="modal-content">
                                 <div class="modal-header bg-primary text-white">
                                     <h5 class="modal-title fw-bold">
-                                        <i class="bi bi-info-circle"></i> Detalle del Pedido #{{ p.id }}
+                                        <i class="bi bi-info-circle"></i> 
+                                        Detalle del Pedido 
+                                        {% if p.numero_factura %}
+                                        - {{ p.numero_factura }}
+                                        {% endif %}
                                     </h5>
                                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                                 </div>
                                 <div class="modal-body">
+                                    <!-- Factura destacada -->
+                                    {% if p.numero_factura %}
+                                    <div class="text-center mb-3">
+                                        <span class="factura-badge" style="font-size: 1rem; padding: 8px 16px;">
+                                            📄 {{ p.numero_factura }}
+                                        </span>
+                                    </div>
+                                    {% endif %}
+                                    
                                     <div class="row">
                                         <div class="col-md-6">
                                             <div class="info-group">
@@ -587,7 +653,7 @@
                                 <div class="modal-footer">
                                     <a href="{{ url_for('generar_factura', pedido_id=p.id) }}" 
                                        class="btn btn-danger btn-sm" target="_blank">
-                                        <i class="bi bi-file-pdf"></i> Factura
+                                        <i class="bi bi-file-pdf"></i> Factura PDF
                                     </a>
                                     <button type="button" class="btn btn-warning btn-sm" 
                                             onclick="openEditModal('editModal{{ p.id }}')"
@@ -606,13 +672,21 @@
                             <div class="modal-content">
                                 <div class="modal-header bg-warning">
                                     <h5 class="modal-title fw-bold">
-                                        <i class="bi bi-pencil-square"></i> Editar Pedido #{{ p.id }}
+                                        <i class="bi bi-pencil-square"></i> Editar Pedido
+                                        {% if p.numero_factura %}
+                                        - {{ p.numero_factura }}
+                                        {% endif %}
                                     </h5>
                                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                 </div>
                                 <form action="{{ url_for('editar_pedido', pedido_id=p.id) }}" method="POST" enctype="multipart/form-data">
                                     <div class="modal-body">
                                         <div class="mb-3 p-3 bg-light rounded">
+                                            {% if p.numero_factura %}
+                                            <div class="mb-2">
+                                                <span class="factura-badge">{{ p.numero_factura }}</span>
+                                            </div>
+                                            {% endif %}
                                             <div class="d-flex align-items-center gap-2 mb-2">
                                                 {% if p.sabor.imagen %}
                                                 <img src="{{ url_for('static', filename='img/sabores/' + p.sabor.imagen) }}" 
@@ -683,12 +757,12 @@
                     </div>
                     {% else %}
                     <tr>
-                        <td colspan="10">
+                        <td colspan="11">
                             <div class="empty-state">
                                 <i class="bi bi-inbox"></i>
                                 <h5>No se encontraron registros</h5>
                                 <p class="text-muted">
-                                    {% if filtro_pago != 'todos' or filtro_area != 'todos' or filtro_sabor != 'todos' or fecha_desde or fecha_hasta %}
+                                    {% if filtro_pago != 'todos' or filtro_area != 'todos' or filtro_sabor != 'todos' or filtro_factura or fecha_desde or fecha_hasta %}
                                         No hay resultados con los filtros aplicados.
                                         <br><a href="{{ url_for('historial') }}" class="btn btn-sm btn-outline-primary mt-2">Limpiar filtros</a>
                                     {% else %}
@@ -710,7 +784,7 @@
                 <ul class="pagination justify-content-center mb-0 flex-wrap">
                     {% if pedidos.has_prev %}
                     <li class="page-item">
-                        <a class="page-link" href="{{ url_for('historial', page=pedidos.prev_num, pago=filtro_pago, area=filtro_area, sabor=filtro_sabor, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta) }}">
+                        <a class="page-link" href="{{ url_for('historial', page=pedidos.prev_num, pago=filtro_pago, area=filtro_area, sabor=filtro_sabor, factura=filtro_factura, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta) }}">
                             <i class="bi bi-chevron-left"></i>
                         </a>
                     </li>
@@ -723,7 +797,7 @@
                     {% for page_num in pedidos.iter_pages(left_edge=1, left_current=2, right_current=2, right_edge=1) %}
                         {% if page_num %}
                             <li class="page-item {% if page_num == pedidos.page %}active{% endif %}">
-                                <a class="page-link" href="{{ url_for('historial', page=page_num, pago=filtro_pago, area=filtro_area, sabor=filtro_sabor, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta) }}">
+                                <a class="page-link" href="{{ url_for('historial', page=page_num, pago=filtro_pago, area=filtro_area, sabor=filtro_sabor, factura=filtro_factura, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta) }}">
                                     {{ page_num }}
                                 </a>
                             </li>
@@ -736,7 +810,7 @@
                     
                     {% if pedidos.has_next %}
                     <li class="page-item">
-                        <a class="page-link" href="{{ url_for('historial', page=pedidos.next_num, pago=filtro_pago, area=filtro_area, sabor=filtro_sabor, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta) }}">
+                        <a class="page-link" href="{{ url_for('historial', page=pedidos.next_num, pago=filtro_pago, area=filtro_area, sabor=filtro_sabor, factura=filtro_factura, fecha_desde=fecha_desde, fecha_hasta=fecha_hasta) }}">
                             <i class="bi bi-chevron-right"></i>
                         </a>
                     </li>
@@ -798,8 +872,8 @@ document.addEventListener('DOMContentLoaded', function() {
     let totalUSD = 0;
     
     rows.forEach(row => {
-        const pagoCell = row.querySelector('td:nth-child(8)');
-        const usdCell = row.querySelector('td:nth-child(6)');
+        const pagoCell = row.querySelector('td:nth-child(9)');
+        const usdCell = row.querySelector('td:nth-child(7)');
         
         if (pagoCell) {
             if (pagoCell.textContent.includes('Pagado')) {

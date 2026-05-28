@@ -1247,21 +1247,34 @@
             </div>
             
             <div class="nav-section">Exportar</div>
-            
-            <div class="nav-item">
-                <a href="{{ url_for('reporte_excel') }}" class="nav-link" target="_blank">
-                    <i class="bi bi-file-earmark-excel"></i>
-                    <span>Descargar Excel</span>
-                </a>
-            </div>
-            
-            <div class="nav-item">
-                <a href="{{ url_for('reporte_pdf') }}" class="nav-link" target="_blank">
-                    <i class="bi bi-file-earmark-pdf"></i>
-                    <span>Descargar PDF</span>
-                </a>
-            </div>
-        </nav>
+
+<div class="nav-item">
+    <a href="{{ url_for('reporte_sabores_pdf') }}" class="nav-link" target="_blank">
+        <i class="bi bi-file-earmark-pdf"></i>
+        <span>Sabores PDF</span>
+    </a>
+</div>
+
+<div class="nav-item">
+    <a href="{{ url_for('reporte_sabores_jpg') }}" class="nav-link" target="_blank">
+        <i class="bi bi-file-earmark-image"></i>
+        <span>Sabores JPG</span>
+    </a>
+</div>
+
+<div class="nav-item">
+    <a href="{{ url_for('reporte_excel') }}" class="nav-link" target="_blank">
+        <i class="bi bi-file-earmark-excel"></i>
+        <span>Descargar Excel</span>
+    </a>
+</div>
+
+<div class="nav-item">
+    <a href="{{ url_for('reporte_pdf') }}" class="nav-link" target="_blank">
+        <i class="bi bi-file-earmark-pdf"></i>
+        <span>Descargar PDF</span>
+    </a>
+</div>
         
         <div class="sidebar-footer">
             <!-- Toggle Tema en Sidebar -->

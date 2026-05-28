@@ -20,6 +20,7 @@ from reportlab.lib.pagesizes import letter, A4
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
+from reportlab.lib.units import inch
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -27,23 +28,91 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'clave_secreta_para_sesiones_2024'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///cepillados.db'
 app.config['UPLOAD_FOLDER'] = 'static/captures'
+app.config['CONFIG_FILE'] = 'config.json'
 
 db = SQLAlchemy(app)
 
 # ==================== VARIABLES GLOBALES ====================
 ultima_tasa = {"valor": 36.50, "fecha": None}
 
+# ==================== CONFIGURACIONES POR DEFECTO ====================
+CONFIG_DEFAULT = {
+    "empresa": {
+        "nombre": "Cepillados El Sabor",
+        "rif": "J-12345678-9",
+        "telefono": "0412-1234567",
+        "direccion": "Calle Principal #123, Ciudad",
+        "email": "info@cepilladoselsabor.com",
+        "mensaje_factura": "¡Gracias por su compra! Este comprobante no tiene validez fiscal."
+    },
+    "tasa": {
+        "fuente": "bcv",  # bcv, manual, paralelo
+        "cache_minutos": 60,
+        "tasa_manual": 36.50,
+        "mostrar_en_factura": True
+    },
+    "factura": {
+        "color_principal": "#1a3a5c",
+        "color_secundario": "#0D6EFD",
+        "mostrar_logo": False,
+        "logo_path": "static/img/logo.png",
+        "pie_pagina": "Conserve este comprobante para cualquier reclamo.",
+        "formato_numero": "FACT-{año}-{numero:04d}"
+    },
+    "app": {
+        "nombre": "Panel de Cepillados",
+        "registros_por_pagina": 50,
+        "auto_actualizar_tasa": True,
+        "mostrar_estadisticas_inicio": True
+    }
+}
+
+# ==================== FUNCIONES DE CONFIGURACIÓN ====================
+def cargar_config():
+    """Carga la configuración desde el archivo JSON"""
+    try:
+        if os.path.exists(app.config['CONFIG_FILE']):
+            with open(app.config['CONFIG_FILE'], 'r', encoding='utf-8') as f:
+                config = json.load(f)
+            # Fusionar con defaults para asegurar que existan todas las claves
+            return fusionar_config(CONFIG_DEFAULT, config)
+        else:
+            guardar_config(CONFIG_DEFAULT)
+            return CONFIG_DEFAULT.copy()
+    except Exception as e:
+        print(f"Error cargando configuración: {e}")
+        return CONFIG_DEFAULT.copy()
+
+def guardar_config(config):
+    """Guarda la configuración en el archivo JSON"""
+    try:
+        with open(app.config['CONFIG_FILE'], 'w', encoding='utf-8') as f:
+            json.dump(config, f, indent=4, ensure_ascii=False)
+        return True
+    except Exception as e:
+        print(f"Error guardando configuración: {e}")
+        return False
+
+def fusionar_config(default, custom):
+    """Fusiona la configuración personalizada con los defaults"""
+    result = default.copy()
+    for key, value in custom.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = fusionar_config(result[key], value)
+        else:
+            result[key] = value
+    return result
+
+def obtener_config():
+    """Obtiene la configuración actual"""
+    return cargar_config()
+
 # ==================== FUNCIONES AUXILIARES ====================
-def obtener_tasa_bcv():
-    """Obtiene la tasa BCV con sistema de caché (1 hora)"""
-    global ultima_tasa
-    
-    if ultima_tasa["fecha"] and datetime.now() - ultima_tasa["fecha"] < timedelta(hours=1):
-        return ultima_tasa["valor"]
-    
+def obtener_tasa_bcv_online():
+    """Obtiene la tasa BCV desde internet"""
     url = "https://www.bcv.org.ve/"
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
     }
     
     try:
@@ -53,28 +122,69 @@ def obtener_tasa_bcv():
             div_dolar = soup.find("div", id="dolar")
             if div_dolar and div_dolar.find("strong"):
                 tasa = float(div_dolar.find("strong").text.strip().replace(",", "."))
-                ultima_tasa = {"valor": tasa, "fecha": datetime.now()}
-                print(f"✅ Tasa BCV actualizada: Bs. {tasa}")
                 return tasa
-    except requests.exceptions.Timeout:
-        print("❌ Timeout: El BCV no respondió a tiempo")
-    except requests.exceptions.ConnectionError:
-        print("❌ Error de conexión: No se pudo conectar al BCV")
     except Exception as e:
-        print(f"❌ Error BCV: {e}")
+        print(f"Error BCV: {e}")
+    return None
+
+def obtener_tasa_bcv():
+    """Obtiene la tasa BCV según la configuración"""
+    global ultima_tasa
+    config = obtener_config()
     
-    if ultima_tasa["fecha"]:
-        print(f"⚠️ Usando última tasa conocida: Bs. {ultima_tasa['valor']}")
+    fuente = config['tasa']['fuente']
+    cache_minutos = config['tasa']['cache_minutos']
+    
+    # Si la fuente es manual, devolver la tasa manual
+    if fuente == 'manual':
+        return config['tasa']['tasa_manual']
+    
+    # Verificar caché
+    if fuente == 'bcv':
+        if ultima_tasa["fecha"] and datetime.now() - ultima_tasa["fecha"] < timedelta(minutes=cache_minutos):
+            return ultima_tasa["valor"]
+        
+        # Intentar obtener del BCV
+        tasa_online = obtener_tasa_bcv_online()
+        if tasa_online:
+            ultima_tasa = {"valor": tasa_online, "fecha": datetime.now()}
+            print(f"✅ Tasa BCV actualizada: Bs. {tasa_online}")
+            return tasa_online
+        
+        # Si falla, usar última conocida o manual
+        if ultima_tasa["fecha"]:
+            print(f"⚠️ Usando última tasa: Bs. {ultima_tasa['valor']}")
+            return ultima_tasa["valor"]
+        else:
+            print(f"⚠️ Usando tasa manual: Bs. {config['tasa']['tasa_manual']}")
+            return config['tasa']['tasa_manual']
+    
+    return config['tasa']['tasa_manual']
+
+def generar_numero_factura():
+    """Genera un número de factura secuencial"""
+    config = obtener_config()
+    año_actual = datetime.now().year
+    
+    ultima_factura = Pedido.query.filter(
+        Pedido.numero_factura != None,
+        Pedido.numero_factura.like(f'FACT-{año_actual}-%')
+    ).order_by(Pedido.numero_factura.desc()).first()
+    
+    if ultima_factura and ultima_factura.numero_factura:
+        ultimo_numero = int(ultima_factura.numero_factura.split('-')[-1])
+        nuevo_numero = ultimo_numero + 1
     else:
-        print(f"⚠️ Usando tasa por defecto: Bs. {ultima_tasa['valor']}")
+        nuevo_numero = 1
     
-    return ultima_tasa["valor"]
+    return config['factura']['formato_numero'].format(año=año_actual, numero=nuevo_numero)
 
 # ==================== CONTEXT PROCESSOR ====================
 @app.context_processor
 def inject_globals():
     """Inyecta variables globales en todas las plantillas"""
     tasa = obtener_tasa_bcv()
+    config = obtener_config()
     
     cache_info = ""
     if ultima_tasa["fecha"]:
@@ -87,7 +197,8 @@ def inject_globals():
     
     return dict(
         tasa_bcv=tasa,
-        cache_info=cache_info
+        cache_info=cache_info,
+        app_config=config
     )
 
 def calcular_estadisticas_dashboard():
@@ -116,6 +227,13 @@ def calcular_estadisticas_dashboard():
     }
 
 # ==================== MODELOS ====================
+class Configuracion(db.Model):
+    """Modelo para configuraciones en base de datos (opcional)"""
+    id = db.Column(db.Integer, primary_key=True)
+    clave = db.Column(db.String(100), unique=True, nullable=False)
+    valor = db.Column(db.Text, nullable=True)
+    descripcion = db.Column(db.String(255), nullable=True)
+
 class MetodoPago(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(50), nullable=False, unique=True)
@@ -131,7 +249,7 @@ class Sabor(db.Model):
     stock_inicial = db.Column(db.Integer, nullable=False)
     stock_disponible = db.Column(db.Integer, nullable=False)
     precio_usd = db.Column(db.Float, default=1.0)
-    imagen = db.Column(db.String(255), nullable=True)  # NUEVO CAMPO PARA IMAGEN
+    imagen = db.Column(db.String(255), nullable=True)
 
 class Area(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -139,6 +257,7 @@ class Area(db.Model):
 
 class Pedido(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    numero_factura = db.Column(db.String(20), unique=True, nullable=True)
     nombre = db.Column(db.String(100), nullable=False)
     area_id = db.Column(db.Integer, db.ForeignKey('area.id'), nullable=False)
     area = db.relationship('Area', backref=db.backref('pedidos', lazy=True))
@@ -154,7 +273,6 @@ class Pedido(db.Model):
     fecha_registro = db.Column(db.DateTime, default=datetime.now)
 
 def inicializar_metodos_pago():
-    """Inicializa los métodos de pago por defecto"""
     metodos_default = [
         {'nombre': 'Pago Móvil', 'codigo': 'pago_movil', 'requiere_capture': True, 'requiere_monto_bs': True},
         {'nombre': 'Efectivo Bolívares', 'codigo': 'efectivo_bs', 'requiere_capture': False, 'requiere_monto_bs': True},
@@ -171,11 +289,13 @@ def inicializar_metodos_pago():
 with app.app_context():
     db.create_all()
     inicializar_metodos_pago()
+    # Crear archivo de configuración si no existe
+    if not os.path.exists(app.config['CONFIG_FILE']):
+        guardar_config(CONFIG_DEFAULT)
 
 # ==================== RUTAS PRINCIPALES ====================
 @app.route('/')
 def index():
-    """Dashboard principal - Despachar pedido y últimos registros"""
     sabores = Sabor.query.all()
     pedidos = Pedido.query.order_by(Pedido.fecha_registro.desc()).limit(15).all()
     areas = Area.query.all()
@@ -191,49 +311,85 @@ def index():
         stats=stats
     )
 
+@app.route('/configuracion', methods=['GET', 'POST'])
+def configuracion():
+    """Página de configuraciones del sistema"""
+    config = obtener_config()
+    
+    if request.method == 'POST':
+        seccion = request.form.get('seccion')
+        
+        if seccion == 'empresa':
+            config['empresa']['nombre'] = request.form.get('nombre_empresa', config['empresa']['nombre'])
+            config['empresa']['rif'] = request.form.get('rif', config['empresa']['rif'])
+            config['empresa']['telefono'] = request.form.get('telefono', config['empresa']['telefono'])
+            config['empresa']['direccion'] = request.form.get('direccion', config['empresa']['direccion'])
+            config['empresa']['email'] = request.form.get('email', config['empresa']['email'])
+            config['empresa']['mensaje_factura'] = request.form.get('mensaje_factura', config['empresa']['mensaje_factura'])
+            flash('✅ Datos de la empresa actualizados', 'success')
+            
+        elif seccion == 'tasa':
+            config['tasa']['fuente'] = request.form.get('fuente_tasa', 'bcv')
+            config['tasa']['cache_minutos'] = int(request.form.get('cache_minutos', 60))
+            config['tasa']['tasa_manual'] = float(request.form.get('tasa_manual', 36.50))
+            config['tasa']['mostrar_en_factura'] = request.form.get('mostrar_en_factura') == 'on'
+            
+            # Si se cambió a manual, actualizar la tasa global
+            if config['tasa']['fuente'] == 'manual':
+                global ultima_tasa
+                ultima_tasa = {"valor": config['tasa']['tasa_manual'], "fecha": datetime.now()}
+            
+            flash('✅ Configuración de tasa actualizada', 'success')
+            
+        elif seccion == 'factura':
+            config['factura']['color_principal'] = request.form.get('color_principal', '#1a3a5c')
+            config['factura']['color_secundario'] = request.form.get('color_secundario', '#0D6EFD')
+            config['factura']['pie_pagina'] = request.form.get('pie_pagina', config['factura']['pie_pagina'])
+            flash('✅ Configuración de facturas actualizada', 'success')
+            
+        elif seccion == 'app':
+            config['app']['nombre'] = request.form.get('nombre_app', config['app']['nombre'])
+            config['app']['registros_por_pagina'] = int(request.form.get('registros_por_pagina', 50))
+            config['app']['mostrar_estadisticas_inicio'] = request.form.get('mostrar_estadisticas') == 'on'
+            flash('✅ Configuración de la aplicación actualizada', 'success')
+        
+        guardar_config(config)
+        return redirect(url_for('configuracion'))
+    
+    return render_template('configuracion.html', config=config)
+
 @app.route('/reportes')
 def reportes():
-    """Página de reportes y estadísticas con gráficos"""
-    # Datos para gráficos - Últimos 30 días
     ventas_diarias = []
     for i in range(29, -1, -1):
         fecha = datetime.now().date() - timedelta(days=i)
         total = db.session.query(
             func.coalesce(func.sum(Pedido.cantidad * Sabor.precio_usd), 0)
-        ).join(Sabor).filter(
-            func.date(Pedido.fecha_registro) == fecha
-        ).scalar()
+        ).join(Sabor).filter(func.date(Pedido.fecha_registro) == fecha).scalar()
         ventas_diarias.append({
             'fecha': fecha.strftime('%d/%m'),
             'total': round(float(total), 2)
         })
     
-    # Ventas por sabor
     ventas_por_sabor = db.session.query(
         Sabor.nombre, 
         func.sum(Pedido.cantidad).label('cantidad'),
         func.sum(Pedido.cantidad * Sabor.precio_usd).label('total_usd')
     ).join(Pedido).group_by(Sabor.id).order_by(db.desc('total_usd')).all()
     
-    # Ventas por área
     ventas_por_area = db.session.query(
         Area.nombre, 
         func.count(Pedido.id).label('cantidad'),
         func.sum(Pedido.cantidad * Sabor.precio_usd).label('total_usd')
     ).join(Pedido).join(Sabor).group_by(Area.id).order_by(db.desc('total_usd')).all()
     
-    # Ventas por método de pago
     ventas_por_metodo = {}
     for metodo in MetodoPago.query.all():
         total = db.session.query(
             func.coalesce(func.sum(Pedido.cantidad * Sabor.precio_usd), 0)
-        ).join(Sabor).filter(
-            Pedido.metodo_pago_codigo == metodo.codigo,
-            Pedido.pago == 'si'
-        ).scalar()
+        ).join(Sabor).filter(Pedido.metodo_pago_codigo == metodo.codigo, Pedido.pago == 'si').scalar()
         ventas_por_metodo[metodo.nombre] = round(float(total), 2)
     
-    # Totales generales
     total_pedidos = Pedido.query.count()
     total_pagados = Pedido.query.filter_by(pago='si').count()
     total_pendientes = Pedido.query.filter_by(pago='no').count()
@@ -264,12 +420,10 @@ def reportes():
 
 @app.route('/inventario')
 def inventario():
-    """Página de gestión de inventario, áreas y métodos de pago"""
     sabores = Sabor.query.all()
     areas = Area.query.all()
     todos_metodos = MetodoPago.query.all()
     
-    # Estadísticas de inventario
     total_productos = sum(s.stock_disponible for s in sabores)
     productos_stock_bajo = sum(1 for s in sabores if s.stock_disponible <= 10)
     valor_inventario_usd = sum(s.stock_disponible * s.precio_usd for s in sabores)
@@ -291,11 +445,10 @@ def inventario():
 
 @app.route('/historial')
 def historial():
-    """Página de historial completo de transacciones"""
     page = request.args.get('page', 1, type=int)
-    per_page = 50
+    config = obtener_config()
+    per_page = config['app']['registros_por_pagina']
     
-    # Filtros
     filtro_pago = request.args.get('pago', 'todos')
     filtro_area = request.args.get('area', 'todos')
     filtro_sabor = request.args.get('sabor', 'todos')
@@ -374,7 +527,11 @@ def registrar_pedido():
 
         sabor.stock_disponible -= cantidad
         
+        # Generar número de factura
+        numero_factura = generar_numero_factura()
+        
         nuevo_pedido = Pedido(
+            numero_factura=numero_factura,
             nombre=request.form.get('nombre', 'Anónimo'), 
             area_id=int(request.form.get('area_id')), 
             sabor_id=sabor.id, 
@@ -388,7 +545,7 @@ def registrar_pedido():
         )
         db.session.add(nuevo_pedido)
         db.session.commit()
-        flash('✅ Pedido registrado exitosamente', 'success')
+        flash(f'✅ Pedido registrado - Factura {numero_factura}', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'❌ Error al registrar pedido: {str(e)}', 'danger')
@@ -409,7 +566,6 @@ def agregar_sabor():
             
         existe = Sabor.query.filter_by(nombre=nombre).first()
         if not existe:
-            # Manejar imagen
             imagen = request.files.get('imagen')
             nombre_imagen = None
             if imagen and imagen.filename != '':
@@ -470,7 +626,6 @@ def editar_sabor(sabor_id):
             flash(f'✅ Se agregaron {cantidad} unidades', 'success')
         
         elif accion == 'actualizar_imagen':
-            # Eliminar imagen anterior si se solicita
             if request.form.get('borrar_imagen') == 'si':
                 if sabor.imagen:
                     ruta_anterior = os.path.join(app.static_folder, 'img', 'sabores', sabor.imagen)
@@ -478,12 +633,10 @@ def editar_sabor(sabor_id):
                         os.remove(ruta_anterior)
                 sabor.imagen = None
             
-            # Subir nueva imagen
             imagen = request.files.get('imagen')
             if imagen and imagen.filename != '':
                 extension = imagen.filename.split('.')[-1].lower()
                 if extension in ['jpg', 'jpeg', 'png', 'gif', 'webp']:
-                    # Eliminar anterior si no se marcó borrar
                     if sabor.imagen and request.form.get('borrar_imagen') != 'si':
                         ruta_anterior = os.path.join(app.static_folder, 'img', 'sabores', sabor.imagen)
                         if os.path.exists(ruta_anterior):
@@ -493,9 +646,9 @@ def editar_sabor(sabor_id):
                     os.makedirs(os.path.join(app.static_folder, 'img', 'sabores'), exist_ok=True)
                     imagen.save(os.path.join(app.static_folder, 'img', 'sabores', nombre_imagen))
                     sabor.imagen = nombre_imagen
-                    flash(f'✅ Imagen actualizada para {sabor.nombre.capitalize()}', 'success')
+                    flash(f'✅ Imagen actualizada', 'success')
                 else:
-                    flash('❌ Formato de imagen no válido. Use JPG, PNG, GIF o WEBP', 'danger')
+                    flash('❌ Formato de imagen no válido', 'danger')
         
         db.session.commit()
     except Exception as e:
@@ -513,7 +666,6 @@ def eliminar_sabor(sabor_id):
             flash(f'❌ No se puede eliminar: tiene {pedidos_asociados} pedidos', 'danger')
             return redirect(url_for('inventario'))
         
-        # Eliminar imagen si existe
         if sabor.imagen:
             ruta_imagen = os.path.join(app.static_folder, 'img', 'sabores', sabor.imagen)
             if os.path.exists(ruta_imagen):
@@ -630,7 +782,6 @@ def agregar_area():
         if not nombre:
             flash('❌ El nombre es requerido', 'danger')
             return redirect(url_for('inventario'))
-            
         existe = Area.query.filter_by(nombre=nombre).first()
         if not existe:
             nueva_area = Area(nombre=nombre)
@@ -693,6 +844,12 @@ def configurar_tasa():
             flash('❌ La tasa debe ser mayor a 0', 'danger')
             return redirect(request.referrer or url_for('index'))
         ultima_tasa = {"valor": nueva_tasa, "fecha": datetime.now()}
+        
+        # Actualizar también en config
+        config = obtener_config()
+        config['tasa']['tasa_manual'] = nueva_tasa
+        guardar_config(config)
+        
         flash(f'✅ Tasa configurada: Bs. {nueva_tasa:.2f}', 'success')
     except ValueError:
         flash('❌ Ingrese un valor numérico válido', 'danger')
@@ -706,65 +863,152 @@ def forzar_actualizacion_tasa():
     flash(f'🔄 Tasa actualizada: Bs. {tasa:.2f}', 'success')
     return redirect(request.referrer or url_for('index'))
 
-# ==================== RUTAS DE FACTURAS Y REPORTES ====================
+# ==================== RUTA DE FACTURA PROFESIONAL ====================
 @app.route('/factura/<int:pedido_id>')
 def generar_factura(pedido_id):
     pedido = Pedido.query.get_or_404(pedido_id)
     tasa_bcv = obtener_tasa_bcv()
+    config = obtener_config()
     buffer = io.BytesIO()
     
-    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
+    # Colores de la configuración
+    color_principal = config['factura']['color_principal']
+    color_secundario = config['factura']['color_secundario']
+    
+    page_width, page_height = A4
+    doc = SimpleDocTemplate(
+        buffer, 
+        pagesize=A4, 
+        rightMargin=40, 
+        leftMargin=40, 
+        topMargin=40, 
+        bottomMargin=50
+    )
+    
     elements = []
     styles = getSampleStyleSheet()
     
-    titulo_style = ParagraphStyle('Titulo', parent=styles['Heading1'], alignment=1, fontSize=18, textColor=colors.HexColor('#0D6EFD'), spaceAfter=20)
-    subtitulo_style = ParagraphStyle('Subtitulo', parent=styles['Normal'], fontSize=12, spaceAfter=8, textColor=colors.HexColor('#495057'))
+    # ==================== ESTILOS ====================
+    titulo_style = ParagraphStyle('Titulo', parent=styles['Heading1'], fontSize=22, textColor=color_principal, spaceAfter=6, alignment=0, fontName='Helvetica-Bold')
+    subtitulo_style = ParagraphStyle('Subtitulo', parent=styles['Normal'], fontSize=10, textColor=colors.HexColor('#495057'), spaceAfter=4, fontName='Helvetica')
+    empresa_style = ParagraphStyle('Empresa', parent=styles['Normal'], fontSize=14, textColor=color_principal, fontName='Helvetica-Bold')
+    factura_numero_style = ParagraphStyle('FacturaNumero', parent=styles['Normal'], fontSize=16, textColor=color_secundario, fontName='Helvetica-Bold', alignment=2)
+    seccion_style = ParagraphStyle('Seccion', parent=styles['Normal'], fontSize=11, textColor=color_principal, fontName='Helvetica-Bold', spaceAfter=8, spaceBefore=15)
+    texto_style = ParagraphStyle('Texto', parent=styles['Normal'], fontSize=10, textColor=colors.HexColor('#333333'), fontName='Helvetica')
+    total_style = ParagraphStyle('Total', parent=styles['Normal'], fontSize=14, textColor=color_secundario, fontName='Helvetica-Bold', alignment=2)
+    pie_style = ParagraphStyle('Pie', parent=styles['Normal'], fontSize=8, textColor=colors.HexColor('#999999'), alignment=1, fontName='Helvetica-Oblique')
     
-    elements.append(Paragraph("<b>COMPROBANTE DE VENTA</b>", titulo_style))
-    elements.append(Paragraph(f"<b>Fecha:</b> {pedido.fecha_registro.strftime('%d/%m/%Y %I:%M %p')}", subtitulo_style))
-    elements.append(Paragraph(f"<b>Cliente:</b> {pedido.nombre}", subtitulo_style))
-    elements.append(Paragraph(f"<b>Área:</b> {pedido.area.nombre}", subtitulo_style))
-    elements.append(Spacer(1, 20))
+    # ==================== ENCABEZADO ====================
+    encabezado_data = [[
+        Paragraph(f"<b>{config['empresa']['nombre']}</b>", empresa_style),
+        Paragraph(f"<b>FACTURA</b><br/><font size='12' color='{color_secundario}'>{pedido.numero_factura or 'N/A'}</font>", factura_numero_style)
+    ]]
     
-    subtotal_usd = pedido.cantidad * pedido.sabor.precio_usd
+    t_encabezado = Table(encabezado_data, colWidths=[300, 200])
+    t_encabezado.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('ALIGN', (1,0), (1,0), 'RIGHT'),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 10),
+    ]))
+    elements.append(t_encabezado)
     
-    datos_tabla = [
-        ["Producto", "Cant.", "Precio Unit.", "Total"],
-        [pedido.sabor.nombre.capitalize(), str(pedido.cantidad), f"${pedido.sabor.precio_usd:.2f}", f"${subtotal_usd:.2f}"]
+    elements.append(Paragraph(f"RIF: {config['empresa']['rif']} | Tel: {config['empresa']['telefono']} | {config['empresa']['direccion']}", subtitulo_style))
+    elements.append(Spacer(1, 5))
+    elements.append(Table([['']], colWidths=[page_width - 80], rowHeights=[1]))
+    elements.append(Spacer(1, 15))
+    
+    # ==================== DATOS DEL CLIENTE ====================
+    datos_cliente = [
+        [
+            Paragraph(f"<b>CLIENTE:</b><br/>{pedido.nombre}<br/><font size='9' color='#666666'>Área: {pedido.area.nombre}</font>", texto_style),
+            Paragraph(f"<b>FECHA:</b><br/>{pedido.fecha_registro.strftime('%d/%m/%Y')}<br/><font size='9' color='#666666'>{pedido.fecha_registro.strftime('%I:%M %p')}</font>", texto_style),
+            Paragraph(f"<b>ESTADO:</b><br/><font color='{'#198754' if pedido.pago == 'si' else '#DC3545'}'>{'PAGADO' if pedido.pago == 'si' else 'PENDIENTE'}</font><br/><font size='9' color='#666666'>{'Entregado' if pedido.entrega == 'si' else 'Por entregar'}</font>", texto_style)
+        ]
     ]
     
-    t = Table(datos_tabla, colWidths=[200, 80, 100, 100])
-    t.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#0D6EFD')),
-        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
-        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-        ('BOTTOMPADDING', (0,0), (-1,0), 8),
-        ('BACKGROUND', (0,1), (-1,-1), colors.HexColor('#F8F9FA')),
-        ('GRID', (0,0), (-1,-1), 1, colors.HexColor('#DEE2E6')),
+    t_cliente = Table(datos_cliente, colWidths=[200, 150, 150])
+    t_cliente.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F8FAFC')),
+        ('TOPPADDING', (0,0), (-1,-1), 8),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 8),
+        ('LEFTPADDING', (0,0), (-1,-1), 12),
     ]))
-    elements.append(t)
+    elements.append(t_cliente)
     elements.append(Spacer(1, 20))
     
-    elements.append(Paragraph(f"<b>Tasa BCV:</b> Bs. {tasa_bcv:.2f}", subtitulo_style))
-    elements.append(Paragraph(f"<b>Total en Bolívares:</b> Bs. {subtotal_usd * tasa_bcv:.2f}", subtitulo_style))
+    # ==================== TABLA DE PRODUCTOS (SIN IVA) ====================
+    subtotal_usd = pedido.cantidad * pedido.sabor.precio_usd
+    subtotal_bs = subtotal_usd * tasa_bcv
     
-    estado_pago = "✅ PAGADO" if pedido.pago == 'si' else "❌ PENDIENTE"
-    metodo_nombre = pedido.metodo_pago_rel.nombre if pedido.metodo_pago_rel else 'N/A'
+    productos_data = [
+        [
+            Paragraph('<b>Producto</b>', texto_style),
+            Paragraph('<b>Cant.</b>', texto_style),
+            Paragraph('<b>Precio Unit.</b>', texto_style),
+            Paragraph('<b>Total</b>', texto_style)
+        ]
+    ]
     
-    elements.append(Paragraph(f"<b>Estado:</b> {estado_pago}", subtitulo_style))
+    productos_data.append([
+        Paragraph(f"{pedido.sabor.nombre.capitalize()}", texto_style),
+        Paragraph(f"{pedido.cantidad}", texto_style),
+        Paragraph(f"${pedido.sabor.precio_usd:.2f}", texto_style),
+        Paragraph(f"${subtotal_usd:.2f}", texto_style)
+    ])
+    
+    # Total (sin IVA)
+    productos_data.append(['', '', Paragraph('<b>TOTAL USD:</b>', total_style), Paragraph(f'<b>${subtotal_usd:.2f}</b>', total_style)])
+    
+    if config['tasa']['mostrar_en_factura']:
+        productos_data.append(['', '', Paragraph('<b>Equivalente Bs:</b>', texto_style), Paragraph(f'<b>Bs. {subtotal_bs:.2f}</b>', texto_style)])
+    
+    t_productos = Table(productos_data, colWidths=[200, 60, 120, 120])
+    t_productos.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), color_principal),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0,0), (-1,0), 10),
+        ('BOTTOMPADDING', (0,0), (-1,0), 10),
+        ('TOPPADDING', (0,0), (-1,0), 10),
+        ('BACKGROUND', (0,1), (-1,1), colors.white),
+        ('BACKGROUND', (0,2), (-1,2), colors.HexColor('#E8F0FE')),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#DEE2E6')),
+        ('BOX', (0,0), (-1,-1), 1, color_principal),
+        ('ALIGN', (1,0), (3,-1), 'RIGHT'),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('TOPPADDING', (0,1), (-1,-1), 6),
+        ('BOTTOMPADDING', (0,1), (-1,-1), 6),
+        ('LEFTPADDING', (0,0), (-1,-1), 10),
+        ('RIGHTPADDING', (0,0), (-1,-1), 10),
+    ]))
+    elements.append(t_productos)
+    elements.append(Spacer(1, 20))
+    
+    # ==================== MÉTODO DE PAGO ====================
     if pedido.pago == 'si':
-        elements.append(Paragraph(f"<b>Método de Pago:</b> {metodo_nombre}", subtitulo_style))
+        metodo_nombre = pedido.metodo_pago_rel.nombre if pedido.metodo_pago_rel else 'N/A'
+        elements.append(Paragraph(f"<b>Método de Pago:</b> {metodo_nombre}", texto_style))
         if pedido.monto_pagado_bs:
-            elements.append(Paragraph(f"<b>Monto Recibido:</b> Bs. {pedido.monto_pagado_bs:.2f}", subtitulo_style))
+            elements.append(Paragraph(f"<b>Monto Recibido:</b> Bs. {pedido.monto_pagado_bs:.2f}", texto_style))
     
+    # ==================== PIE DE PÁGINA ====================
     elements.append(Spacer(1, 30))
-    elements.append(Paragraph("¡Gracias por su compra!", ParagraphStyle('Gracias', alignment=1, fontSize=14, textColor=colors.HexColor('#0D6EFD'))))
+    elements.append(Table([['']], colWidths=[page_width - 80], rowHeights=[1]))
+    elements.append(Spacer(1, 10))
+    
+    pie_data = [[Paragraph(f"{config['empresa']['mensaje_factura']}<br/><font size='7'>{config['factura']['pie_pagina']}</font>", pie_style)]]
+    t_pie = Table(pie_data, colWidths=[page_width - 80])
+    t_pie.setStyle(TableStyle([('ALIGN', (0,0), (-1,-1), 'CENTER')]))
+    elements.append(t_pie)
     
     doc.build(elements)
     buffer.seek(0)
-    return send_file(buffer, mimetype='application/pdf', as_attachment=True, download_name=f'Factura_{pedido.nombre}.pdf')
+    
+    return send_file(buffer, mimetype='application/pdf', as_attachment=True, download_name=f'Factura_{pedido.numero_factura or pedido.id}.pdf')
 
+# ==================== RUTAS DE REPORTES ====================
 @app.route('/reporte/excel')
 def reporte_excel():
     wb = openpyxl.Workbook()
@@ -775,7 +1019,7 @@ def reporte_excel():
     header_font = Font(color="FFFFFF", bold=True, size=11)
     border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
     
-    headers = ["Fecha", "Cliente", "Área", "Sabor", "Cant.", "Precio USD", "Total USD", "Método Pago", "Estado", "Entrega"]
+    headers = ["Nº Factura", "Fecha", "Cliente", "Área", "Sabor", "Cant.", "Precio USD", "Total USD", "Método Pago", "Estado", "Entrega"]
     
     for col, header in enumerate(headers, 1):
         cell = ws.cell(row=1, column=col, value=header)
@@ -787,6 +1031,7 @@ def reporte_excel():
     for row, p in enumerate(Pedido.query.all(), 2):
         metodo_nombre = p.metodo_pago_rel.nombre if p.metodo_pago_rel else 'N/A'
         datos = [
+            p.numero_factura or 'N/A',
             p.fecha_registro.strftime('%d/%m/%Y %H:%M'),
             p.nombre,
             p.area.nombre,
@@ -809,12 +1054,7 @@ def reporte_excel():
     stream = io.BytesIO()
     wb.save(stream)
     stream.seek(0)
-    return send_file(
-        stream, 
-        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        as_attachment=True,
-        download_name=f'Reporte_Ventas_{datetime.now().strftime("%Y%m%d")}.xlsx'
-    )
+    return send_file(stream, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', as_attachment=True, download_name=f'Reporte_Ventas_{datetime.now().strftime("%Y%m%d")}.xlsx')
 
 @app.route('/reporte/pdf')
 def reporte_pdf():
@@ -847,9 +1087,10 @@ def reporte_pdf():
     elements.append(t)
     elements.append(Spacer(1, 30))
     
-    table_data = [["Fecha", "Cliente", "Área", "Sabor", "Cant.", "Total USD", "Estado"]]
+    table_data = [["Nº Factura", "Fecha", "Cliente", "Área", "Sabor", "Cant.", "Total USD", "Estado"]]
     for p in Pedido.query.limit(50).all():
         table_data.append([
+            p.numero_factura or 'N/A',
             p.fecha_registro.strftime('%d/%m/%Y'),
             p.nombre[:20],
             p.area.nombre,
@@ -859,7 +1100,7 @@ def reporte_pdf():
             'Pagado' if p.pago == 'si' else 'Pendiente'
         ])
     
-    t2 = Table(table_data, colWidths=[70, 100, 80, 70, 45, 70, 60])
+    t2 = Table(table_data, colWidths=[65, 65, 100, 70, 70, 40, 65, 55])
     t2.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#212529')),
         ('TEXTCOLOR', (0,0), (-1,0), colors.white),

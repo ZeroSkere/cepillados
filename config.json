@@ -1,0 +1,30 @@
+{
+    "empresa": {
+        "nombre": "Maraplus",
+        "rif": "J-12345678-9",
+        "telefono": "",
+        "direccion": "",
+        "email": "",
+        "mensaje_factura": "¡Gracias por su compra! Este comprobante no tiene validez fiscal."
+    },
+    "tasa": {
+        "fuente": "bcv",
+        "cache_minutos": 60,
+        "tasa_manual": 36.5,
+        "mostrar_en_factura": true
+    },
+    "factura": {
+        "color_principal": "#1a3a5c",
+        "color_secundario": "#0D6EFD",
+        "mostrar_logo": false,
+        "logo_path": "static/img/logo.png",
+        "pie_pagina": "Conserve este comprobante para cualquier reclamo.",
+        "formato_numero": "FACT-{año}-{numero:04d}"
+    },
+    "app": {
+        "nombre": "Panel de Cepillados",
+        "registros_por_pagina": 50,
+        "auto_actualizar_tasa": true,
+        "mostrar_estadisticas_inicio": true
+    }
+}

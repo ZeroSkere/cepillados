@@ -1236,6 +1236,15 @@
                     <span>Reportes</span>
                 </a>
             </div>
+
+            <div class="nav-section">Sistema</div>
+
+            <div class="nav-item">
+                <a href="{{ url_for('configuracion') }}" class="nav-link {% if request.endpoint == 'configuracion' %}active{% endif %}">
+                    <i class="bi bi-gear"></i>
+                    <span>Configuración</span>
+                </a>
+            </div>
             
             <div class="nav-section">Exportar</div>
             

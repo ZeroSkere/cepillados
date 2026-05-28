@@ -8,30 +8,26 @@ NOMBRES = [
     "Emiro Pérez", "Cordero José", "Zoraida Hernández", 
     "Raquel Díaz", "Abigail Torres", "Juan Morales", 
     "María Fernández", "Pedro Ramírez", "Luis Castillo",
-    "Ana Suárez", "Jorge Mendoza", "Carmen Ortega", "Rafael Vargas"
+    "Ana Suárez", "Jorge Mendoza", "Carmen Ortega", "Rafael Vargas",
+    "Sofía Herrera", "Daniel Rojas", "Laura Medina", "Andrés López"
 ]
 
 AREAS_DATA = [
-    "ALMACEN", 
-    "SISTEMAS", 
-    "COSMETICOS", 
-    "FARMACIA", 
-    "RECURSOS HUMANOS", 
-    "CAJA",
-    "ADMINISTRACIÓN",
-    "VENTAS"
+    "ALMACEN", "SISTEMAS", "COSMETICOS", "FARMACIA", 
+    "RECURSOS HUMANOS", "CAJA", "ADMINISTRACIÓN", "VENTAS",
+    "CONTABILIDAD", "GERENCIA"
 ]
 
-# Definimos los sabores con su stock inicial y un precio asignado en USD
+# Sabores con stock, precio y referencia de imagen
 SABORES_DATA = [
-    ("fresa", 50, 1.0), 
-    ("colita", 60, 1.0), 
-    ("crema reina", 40, 1.5), 
-    ("limon", 30, 1.0), 
-    ("mantecado", 45, 1.5),
-    ("uva", 35, 2.0),
-    ("chocolate", 25, 2.0),
-    ("coco", 20, 1.5)
+    {"nombre": "fresa", "stock": 50, "precio": 1.0, "color": "#FF6B6B", "emoji": "🍓"},
+    {"nombre": "colita", "stock": 60, "precio": 1.0, "color": "#FF3838", "emoji": "🥤"},
+    {"nombre": "crema reina", "stock": 40, "precio": 1.5, "color": "#FFD93D", "emoji": "👑"},
+    {"nombre": "limon", "stock": 30, "precio": 1.0, "color": "#6BCB77", "emoji": "🍋"},
+    {"nombre": "mantecado", "stock": 45, "precio": 1.5, "color": "#F5E6CC", "emoji": "🍦"},
+    {"nombre": "uva", "stock": 35, "precio": 2.0, "color": "#9B59B6", "emoji": "🍇"},
+    {"nombre": "chocolate", "stock": 25, "precio": 2.0, "color": "#8B4513", "emoji": "🍫"},
+    {"nombre": "coco", "stock": 20, "precio": 1.5, "color": "#DEB887", "emoji": "🥥"},
 ]
 
 # Métodos de pago predefinidos
@@ -76,19 +72,19 @@ METODOS_PAGO_DATA = [
         'codigo': 'punto_venta',
         'requiere_capture': False,
         'requiere_monto_bs': True,
-        'activo': False  # Lo creamos inactivo para probar la funcionalidad
+        'activo': False  # Inactivo para probar la funcionalidad
     }
 ]
 
-# Tasa BCV simulada para los cálculos
-TASA_BCV_SIMULADA = 530.50
+# Tasa BCV simulada
+TASA_BCV_SIMULADA = 36.50
 
 def generar_monto_bs(monto_usd, metodo_codigo):
     """Genera un monto en Bs simulado según el método de pago"""
     if metodo_codigo in ['efectivo_bs', 'pago_movil', 'transferencia', 'punto_venta']:
-        # A veces se paga exacto, a veces con propina
-        if random.random() < 0.3:  # 30% de probabilidad de incluir propina
-            propina = random.uniform(0.5, 2.0)
+        # 30% de probabilidad de incluir propina
+        if random.random() < 0.3:
+            propina = random.uniform(0.5, 3.0)
             return round((monto_usd * TASA_BCV_SIMULADA) + propina, 2)
         else:
             return round(monto_usd * TASA_BCV_SIMULADA, 2)
@@ -96,20 +92,26 @@ def generar_monto_bs(monto_usd, metodo_codigo):
 
 def llenar_base_datos():
     with app.app_context():
-        print("🗑️  Limpiando base de datos anterior...")
-        db.drop_all()  # Borra todas las tablas existentes
-        db.create_all() # Las vuelve a crear limpias con la nueva estructura
+        print("=" * 60)
+        print("🍧 SEMILLERO DE BASE DE DATOS - CEPILLADOS")
+        print("=" * 60)
+        
+        print("\n🗑️  Limpiando base de datos anterior...")
+        db.drop_all()
+        db.create_all()
+        print("   ✅ Base de datos limpia y recreada")
 
+        # ==================== CREAR ÁREAS ====================
         print("\n🏢 Creando Áreas Organizacionales...")
         areas_creadas = []
         for nombre_area in AREAS_DATA:
             nueva_area = Area(nombre=nombre_area)
             db.session.add(nueva_area)
             areas_creadas.append(nueva_area)
-            print(f"   ✓ Área: {nombre_area}")
-        
+            print(f"   ✅ {nombre_area}")
         db.session.commit()
 
+        # ==================== CREAR MÉTODOS DE PAGO ====================
         print("\n💳 Creando Métodos de Pago...")
         metodos_creados = []
         for metodo_data in METODOS_PAGO_DATA:
@@ -117,38 +119,46 @@ def llenar_base_datos():
             db.session.add(nuevo_metodo)
             metodos_creados.append(nuevo_metodo)
             estado = "ACTIVO" if metodo_data['activo'] else "INACTIVO"
-            print(f"   ✓ Método: {metodo_data['nombre']} ({metodo_data['codigo']}) - {estado}")
-            print(f"     - Requiere Capture: {'Sí' if metodo_data['requiere_capture'] else 'No'}")
-            print(f"     - Requiere Monto Bs: {'Sí' if metodo_data['requiere_monto_bs'] else 'No'}")
-        
+            iconos = []
+            if metodo_data['requiere_capture']:
+                iconos.append("📸")
+            if metodo_data['requiere_monto_bs']:
+                iconos.append("💰")
+            print(f"   ✅ {metodo_data['nombre']} ({metodo_data['codigo']}) - {estado} {' '.join(iconos)}")
         db.session.commit()
 
-        print("\n🍧 Creando Sabores, Precios y Stock inicial...")
+        # ==================== CREAR SABORES ====================
+        print("\n🍧 Creando Sabores con Precios y Stock...")
         sabores_creados = []
-        for nombre_sabor, stock, precio in SABORES_DATA:
+        for sabor_data in SABORES_DATA:
             nuevo_sabor = Sabor(
-                nombre=nombre_sabor, 
-                stock_inicial=stock, 
-                stock_disponible=stock,
-                precio_usd=precio
+                nombre=sabor_data['nombre'],
+                stock_inicial=sabor_data['stock'],
+                stock_disponible=sabor_data['stock'],
+                precio_usd=sabor_data['precio'],
+                imagen=None  # Sin imagen por defecto (se pueden agregar después)
             )
             db.session.add(nuevo_sabor)
             sabores_creados.append(nuevo_sabor)
-            print(f"   ✓ Sabor: {nombre_sabor.capitalize()} - Stock: {stock} - ${precio:.2f}")
-            
+            print(f"   ✅ {sabor_data['emoji']} {sabor_data['nombre'].capitalize():15} | Stock: {sabor_data['stock']:3d} | Precio: ${sabor_data['precio']:.2f}")
         db.session.commit()
 
-        print("\n📝 Generando 50 pedidos aleatorios con datos completos...")
+        # ==================== CREAR PEDIDOS ====================
+        print("\n📝 Generando 60 pedidos aleatorios...")
         pedidos_creados = 0
-        fecha_base = datetime.now() - timedelta(days=7)  # Pedidos de la última semana
+        fecha_base = datetime.now() - timedelta(days=7)
         
-        for i in range(50):
+        # Estados posibles con pesos (probabilidades)
+        estados_pago = ["si", "si", "si", "no"]  # 75% pagado, 25% pendiente
+        estados_entrega = ["si", "si", "no"]     # 66% entregado, 33% pendiente
+        
+        for i in range(60):
             nombre = random.choice(NOMBRES)
             area = random.choice(areas_creadas)
             sabor = random.choice(sabores_creados)
-            cantidad = random.randint(1, 4)  # Pedidos de 1 a 4 cepillados
-            pago = random.choice(["si", "si", "si", "no"])  # 75% probabilidad de pagado
-            entrega = random.choice(["si", "si", "no"])  # 66% probabilidad de entregado
+            cantidad = random.choices([1, 2, 3, 4], weights=[40, 35, 20, 5])[0]  # Mayor probabilidad de 1-2
+            pago = random.choice(estados_pago)
+            entrega = random.choice(estados_entrega)
             
             # Si está pagado, asignar método de pago
             metodo_pago_id = None
@@ -171,17 +181,19 @@ def llenar_base_datos():
                     if metodo_elegido.requiere_monto_bs:
                         monto_pagado_bs = generar_monto_bs(monto_usd, metodo_elegido.codigo)
                     
-                    # Simular capture si el método lo requiere
-                    if metodo_elegido.requiere_capture:
-                        # 80% de probabilidad de tener capture
-                        if random.random() < 0.8:
-                            capture_img = f"capture_simulado_{i+1}.jpg"
+                    # Simular capture (80% de probabilidad si el método lo requiere)
+                    if metodo_elegido.requiere_capture and random.random() < 0.8:
+                        capture_img = f"capture_simulado_{i+1}.jpg"
 
             # Generar fecha aleatoria en los últimos 7 días
             dias_atras = random.randint(0, 7)
             horas_atras = random.randint(0, 23)
             minutos_atras = random.randint(0, 59)
-            fecha_pedido = fecha_base + timedelta(days=dias_atras, hours=horas_atras, minutes=minutos_atras)
+            fecha_pedido = fecha_base + timedelta(
+                days=dias_atras, 
+                hours=horas_atras, 
+                minutes=minutos_atras
+            )
 
             # Descontar del stock si hay disponibilidad
             if sabor.stock_disponible >= cantidad:
@@ -203,35 +215,54 @@ def llenar_base_datos():
                 db.session.add(nuevo_pedido)
                 pedidos_creados += 1
                 
-                # Mostrar resumen del pedido creado
-                estado_pago = "PAGADO" if pago == "si" else "PENDIENTE"
+                # Mostrar progreso
+                estado_pago_str = "✅ PAGADO" if pago == "si" else "❌ PENDIENTE"
                 metodo_str = metodo_pago_codigo.replace('_', ' ').title() if pago == "si" else "N/A"
-                print(f"   #{pedidos_creados} {nombre} - {sabor.nombre.capitalize()} x{cantidad} - ${cantidad * sabor.precio_usd:.2f} - {estado_pago} ({metodo_str}) - {fecha_pedido.strftime('%d/%m/%Y %H:%M')}")
+                print(f"   #{pedidos_creados:2d} | {nombre:20s} | {sabor.nombre.capitalize():12s} x{cantidad} | "
+                      f"${cantidad * sabor.precio_usd:.2f} | {estado_pago_str} | {metodo_str} | "
+                      f"{fecha_pedido.strftime('%d/%m %H:%M')}")
 
         db.session.commit()
-        
-        # Mostrar resumen final
-        print("\n" + "="*60)
+
+        # ==================== RESUMEN FINAL ====================
+        print("\n" + "=" * 60)
         print("📊 RESUMEN DE LA BASE DE DATOS GENERADA")
-        print("="*60)
-        print(f"🏢 Áreas creadas: {len(areas_creadas)}")
-        print(f"💳 Métodos de pago: {len(metodos_creados)}")
-        print(f"🍧 Sabores disponibles: {len(sabores_creados)}")
-        print(f"📝 Pedidos generados: {pedidos_creados}")
+        print("=" * 60)
+        print(f"   🏢 Áreas creadas:        {len(areas_creadas)}")
+        print(f"   💳 Métodos de pago:      {len(metodos_creados)} ({sum(1 for m in metodos_creados if m.activo)} activos)")
+        print(f"   🍧 Sabores disponibles:   {len(sabores_creados)}")
+        print(f"   📝 Pedidos generados:     {pedidos_creados}")
         
-        # Calcular estadísticas
-        pedidos_pagados = sum(1 for _ in range(pedidos_creados) if True)  # Placeholder
-        total_usd = 0
-        total_bs = 0
-        
-        print("\n📈 Stock final de sabores:")
+        # Estadísticas de stock
+        print(f"\n📈 Stock final de sabores:")
         for sabor in sabores_creados:
             vendido = sabor.stock_inicial - sabor.stock_disponible
-            print(f"   • {sabor.nombre.capitalize()}: {sabor.stock_disponible}/{sabor.stock_inicial} disponibles (Vendidos: {vendido})")
+            porcentaje = (vendido / sabor.stock_inicial) * 100 if sabor.stock_inicial > 0 else 0
+            barra = "█" * int(porcentaje / 5) + "░" * (20 - int(porcentaje / 5))
+            print(f"   {sabor.nombre.capitalize():15} | {barra} | {sabor.stock_disponible:3d}/{sabor.stock_inicial:3d} | {porcentaje:.0f}% vendido")
         
-        print("\n✅ ¡Base de datos poblada con éxito!")
-        print("🚀 Ya puedes iniciar tu app.py para probar el sistema")
-        print("="*60 + "\n")
+        # Estadísticas de pedidos
+        total_usd = sum(p.cantidad * p.sabor.precio_usd for p in Pedido.query.all() if p.sabor)
+        total_pagados = Pedido.query.filter_by(pago='si').count()
+        total_pendientes = Pedido.query.filter_by(pago='no').count()
+        
+        print(f"\n💰 Resumen financiero:")
+        print(f"   Total facturado (USD):  ${total_usd:.2f}")
+        print(f"   Pedidos pagados:        {total_pagados} ({total_pagados/pedidos_creados*100:.0f}%)")
+        print(f"   Pedidos pendientes:     {total_pendientes} ({total_pendientes/pedidos_creados*100:.0f}%)")
+        
+        # Pedidos por método de pago
+        print(f"\n💳 Pedidos por método de pago:")
+        for metodo in metodos_creados:
+            count = Pedido.query.filter_by(metodo_pago_codigo=metodo.codigo, pago='si').count()
+            if count > 0:
+                print(f"   {metodo.nombre:25} | {count} pedidos")
+        
+        print("\n" + "=" * 60)
+        print("✅ ¡Base de datos poblada con éxito!")
+        print("🚀 Ejecuta: python app.py")
+        print("🌐 Abre: http://localhost:5000")
+        print("=" * 60 + "\n")
 
 if __name__ == '__main__':
     llenar_base_datos()
